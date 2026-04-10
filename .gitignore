@@ -1,0 +1,86 @@
+# ── Python ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+app_ollama.py
+app_1.py
+# ── Virtual Environment ───────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Environment Variables ─────────────────────────────
+.env
+.env.*
+*.env
+
+# ── Logs & Debug ─────────────────────────────────────
+*.log
+logs/
+*.out
+*.err
+
+# ── Jupyter Notebook ─────────────────────────────────
+.ipynb_checkpoints/
+
+# ── VS Code / IDEs ───────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS Files ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Build / Distribution ─────────────────────────────
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ── Docker ───────────────────────────────────────────
+docker-compose.override.yml
+
+# ── Flask / FastAPI ──────────────────────────────────
+instance/
+.webassets-cache
+
+# ── Database ─────────────────────────────────────────
+*.db
+*.sqlite3
+
+# ── ML / AI Models & Data ────────────────────────────
+*.h5
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.joblib
+
+# Large datasets
+data/
+datasets/
+*.csv
+*.zip
+
+# ── Cache ────────────────────────────────────────────
+.cache/
+*.cache
+
+# ── Testing ──────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
+
+# ── Misc ─────────────────────────────────────────────
+*.bak
+*.tmp
+*.temp
