@@ -31,8 +31,12 @@ limiter = Limiter(
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 APP_NAME = os.getenv('APP_NAME', 'AskAI Pakistan')
 
+if not GEMINI_API_KEY:
+    log.error("GEMINI_API_KEY environment variable is not set!")
+    raise ValueError("GEMINI_API_KEY is required. Please set it in a .env file.")
+
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-3-flash-preview')
 
 SYSTEM_PROMPT = """You are an AI and Data Science tutor exclusively for Pakistani CS students.
 
@@ -278,8 +282,9 @@ def ask():
         return jsonify({'answer': answer})
 
     except Exception as e:
-        log.error(f"Error: {e}")
-        return jsonify({'error': 'Something went wrong. Please try again.'}), 500
+        log.error(f"Error: {str(e)}", exc_info=True)
+        error_msg = str(e) if str(e) else 'Something went wrong. Please try again.'
+        return jsonify({'error': error_msg}), 500
 
 @app.route('/health')
 def health():
