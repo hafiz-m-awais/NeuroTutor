@@ -108,9 +108,9 @@ function startNewChat() {
   const chatEl = document.getElementById('chat');
   chatEl.innerHTML = `
     <div class="welcome" id="welcome">
-      <div class="icon">A</div>
-      <h2>Assalam o Alaikum!</h2>
-      <p>I'm your free AI tutor for Machine Learning and Data Science. Ask me anything!</p>
+      <div class="icon">N</div>
+      <h2>Welcome to NeuroTutor!</h2>
+      <p>I'm your AI tutor for Machine Learning and Data Science. Ask me anything!</p>
     </div>`;
 
   renderChatList();
