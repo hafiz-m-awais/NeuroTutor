@@ -9,14 +9,19 @@ log = logging.getLogger(__name__)
 client = genai.Client(api_key=Config.GEMINI_API_KEY)
 
 def build_prompt(question: str, history: list) -> str:
-    parts = [SYSTEM_PROMPT, "", "Conversation so far:"]
-    for msg in history:
-        role = msg.get('role', 'user')
-        content = msg.get('content', '')
-        speaker = 'Student' if role == 'user' else 'Tutor'
-        parts.append(f"{speaker}: {content}")
-    parts.append("")
-    parts.append(f"Student question: {question}")
+    parts = [SYSTEM_PROMPT, ""]
+    
+    if len(history) > 1:
+        parts.append("Previous conversation:")
+        for msg in history[:-1]:
+            role = msg.get('role', 'user')
+            content = msg.get('content', '')
+            speaker = 'Student' if role == 'user' else 'Tutor'
+            parts.append(f"{speaker}: {content}")
+        parts.append("")
+    
+    parts.append(f"Student: {question}")
+    parts.append("Tutor:")
     return "\n".join(parts)
 
 def stream_response(prompt: str):
