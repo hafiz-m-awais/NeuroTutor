@@ -1,4 +1,4 @@
-const DARK_KEY = 'askai_dark_mode';
+const DARK_KEY = 'neurotutor_dark_mode';
 
 function initDarkMode() {
   const saved = localStorage.getItem(DARK_KEY);

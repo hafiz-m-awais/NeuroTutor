@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'askai_chats';
+const STORAGE_KEY = 'neurotutor_chats';
 const MAX_CHATS = 50;
 
 let currentChatId = null;

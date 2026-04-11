@@ -1,14 +1,4 @@
----
-title: AskAI Pakistan
-emoji: 🧠
-colorFrom: green
-colorTo: blue
-sdk: docker
-pinned: false
-license: mit
----
-
-# 🤖 AskAI Pakistan
+# 🤖 NeuroTutor
 
 ![Python Version](https://img.shields.io/badge/Python-3.9%2B-blue?style=for-the-badge&logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-Web%20Framework-black?style=for-the-badge&logo=flask)
@@ -16,7 +6,7 @@ license: mit
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)
 
-AskAI Pakistan is a real-time, conversational AI tutor built specifically for Pakistani Computer Science and Data Science students. Designed to act like a helpful senior peer, it strictly focuses on answering questions related to AI, Machine Learning, Deep Learning, Data Science, and Python.
+NeuroTutor is a real-time, conversational AI tutor built specifically for Pakistani Computer Science and Data Science students. Designed to act like a helpful senior peer, it strictly focuses on answering questions related to AI, Machine Learning, Deep Learning, Data Science, and Python.
 
 ---
 
@@ -27,7 +17,7 @@ AskAI Pakistan is a real-time, conversational AI tutor built specifically for Pa
 
 ## ✨ Features
 
-- **Domain-Specific Tutoring:** Strictly bound to AI, ML, Data Science, and Python. AskAI will politely decline off-topic questions.
+- **Domain-Specific Tutoring:** Strictly bound to AI, ML, Data Science, and Python. NeuroTutor will politely decline off-topic questions.
 - **Real-Time Streaming:** Powered by the Google Gemini API, answers are streamed in real-time to the UI (using Server-Sent Events) for a seamless, fast experience.
 - **Context-Aware Memory:** Remembers the conversation history, user goals, and names to provide highly personalized, conversational assistance.
 - **Rate-Limiting & Security:** Protected by `Flask-Limiter` along with robust input constraints to prevent abuse.

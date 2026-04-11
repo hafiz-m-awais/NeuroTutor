@@ -7,7 +7,7 @@ load_dotenv()
 class Config:
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
     GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
-    APP_NAME = os.getenv('APP_NAME', 'AskAI Pakistan')
+    APP_NAME = os.getenv('APP_NAME', 'NeuroTutor')
     
     # Input/Output Limits
     MAX_INPUT_LENGTH = 500
