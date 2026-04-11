@@ -21,7 +21,7 @@ AskAI Pakistan is a real-time, conversational AI tutor built specifically for Pa
 ---
 
 ## 📸 UI Preview
-*(Placeholder: Add an animated GIF or a screenshot of your chat interface streaming in dark mode here)*
+![NeuroTutor UI Preview](assets/ui-preview.png)
 
 ---
 
