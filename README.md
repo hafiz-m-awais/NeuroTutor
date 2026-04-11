@@ -1,7 +1,7 @@
 ---
-title: Askai Pakistan
-emoji: 📉
-colorFrom: gray
+title: AskAI Pakistan
+emoji: 🧠
+colorFrom: green
 colorTo: blue
 sdk: docker
 pinned: false
