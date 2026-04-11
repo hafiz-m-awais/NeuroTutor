@@ -1,11 +1,12 @@
 import os
 import logging
 from datetime import datetime
+from typing import Any
 from flask import Flask, request, jsonify, render_template_string, Response, stream_with_context
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai
 import json
 
 load_dotenv()
@@ -31,26 +32,26 @@ limiter = Limiter(
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 APP_NAME = os.getenv('APP_NAME', 'AskAI Pakistan')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3-flash-preview')
 
 if not GEMINI_API_KEY:
     log.error("GEMINI_API_KEY environment variable is not set!")
     raise ValueError("GEMINI_API_KEY is required. Please set it in a .env file.")
 
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-3-flash-preview')
+client = genai.Client(api_key=GEMINI_API_KEY)
 
-SYSTEM_PROMPT = """You are AskAI — an expert AI and Data Science tutor exclusively for Pakistani CS students.
+SYSTEM_PROMPT = """You are AskAI — a concise AI and Data Science tutor for Pakistani CS students.
 
 STRICT RULES:
-1. ONLY answer questions about: AI, Machine Learning, Deep Learning, Data Science, Python programming, NLP, Computer Vision, or related CS topics.
-2. If asked anything else respond with: "I can only help with AI, Machine Learning, Data Science and Python topics!"
-3. Always give: simple explanation first, Python code example when relevant, real world analogy.
-4. Be conversational, encouraging and remember the conversation context.
-5. Keep answers concise but complete. Use bullet points and code blocks.
-6. Never produce harmful, political or inappropriate content.
-7. You are talking to Pakistani students — be warm, friendly and relatable."""
+1. ONLY answer questions about AI, ML, Deep Learning, Data Science, Python, NLP, Computer Vision.
+2. If asked anything else say: "I can only help with AI, Data Science and Python topics!"
+3. Be conversational and friendly like a senior student helping a junior.
+4. ONLY include Python code if the student explicitly asks for code or an example.
+5. Keep answers SHORT and to the point — max 150 words unless code is requested.
+6. Never add unnecessary sections or headers for simple questions.
+7. Talk like a helpful friend, not a textbook."""
 
-HTML = """
+HTML = r"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -482,17 +483,19 @@ HTML = """
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let fullText = '';
+      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const data = line.slice(6);
+            const data = line.slice(6).trim();
             if (data === '[DONE]') break;
             try {
               const parsed = JSON.parse(data);
@@ -545,27 +548,41 @@ def ask():
         if len(question) > 500:
             return jsonify({'error': 'Question too long. Max 500 characters.'}), 400
 
-        messages = [{'role': 'user', 'parts': [SYSTEM_PROMPT + '\n\nYou are now starting a tutoring session.']}]
-
-        for msg in history[:-1]:
-            role = 'user' if msg['role'] == 'user' else 'model'
-            messages.append({'role': role, 'parts': [msg['content']]})
+        # Flatten history into a plain transcript for robust SDK compatibility.
+        transcript_parts = [SYSTEM_PROMPT, "", "Conversation so far:"]
+        for msg in history:
+            role = msg.get('role', 'user')
+            content = msg.get('content', '')
+            speaker = 'Student' if role == 'user' else 'Tutor'
+            transcript_parts.append(f"{speaker}: {content}")
+        transcript_parts.append("")
+        transcript_parts.append(f"Student question: {question}")
+        prompt = "\n".join(transcript_parts)
 
         log.info(f"Question: {question[:60]}...")
 
         def generate():
-            try:
-                chat = model.start_chat(history=messages)
-                response = chat.send_message(question, stream=True)
-                for chunk in response:
-                    if chunk.text:
-                        yield f"data: {json.dumps({'text': chunk.text})}\n\n"
-                yield "data: [DONE]\n\n"
-            except Exception as e:
-                log.error(f"Streaming error: {e}")
-                yield f"data: {json.dumps({'text': 'Sorry, something went wrong. Please try again.'})}\n\n"
-                yield "data: [DONE]\n\n"
+          try:
+            response = client.models.generate_content_stream(
+              model=GEMINI_MODEL,
+              contents=prompt,
+              config={
+                "max_output_tokens": 1024,
+                "temperature": 0.7,
+              }
+            )
 
+            for chunk in response:
+              chunk_text: Any | None = getattr(chunk, 'text', None)
+              if chunk_text:
+                yield f"data: {json.dumps({'text': chunk_text})}\n\n"
+
+            yield "data: [DONE]\n\n"
+          except Exception as e:
+            log.error(f"Streaming error: {e}")
+            yield f"data: {json.dumps({'text': 'Sorry, something went wrong. Please try again.'})}\n\n"
+            yield "data: [DONE]\n\n"
+        
         return Response(
             stream_with_context(generate()),
             mimetype='text/event-stream',
