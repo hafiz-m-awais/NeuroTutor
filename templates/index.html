@@ -21,80 +21,53 @@
     transition: background 0.2s;
   }
   .dark-toggle:hover { background: rgba(255,255,255,0.1); }
-
   .code-block-wrapper {
-    border-radius: 8px;
-    overflow: hidden;
-    margin: 8px 0;
-    border: 1px solid #2a2a3e;
+    border-radius: 8px; overflow: hidden;
+    margin: 8px 0; border: 1px solid #2a2a3e;
   }
   .code-header {
-    background: #2a2a3e;
-    padding: 6px 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #3a3a4e;
+    background: #2a2a3e; padding: 6px 12px;
+    display: flex; justify-content: space-between;
+    align-items: center; border-bottom: 1px solid #3a3a4e;
   }
   .code-lang { font-size: 11px; color: #888; font-family: monospace; }
   .code-actions { display: flex; gap: 6px; }
-
   .run-btn, .copy-btn {
-    padding: 3px 10px;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-    border: 1px solid #3a3a4e;
-    transition: all 0.2s;
+    padding: 3px 10px; border-radius: 4px;
+    font-size: 11px; cursor: pointer;
+    border: 1px solid #3a3a4e; transition: all 0.2s;
   }
   .run-btn { background: #1a3a1a; color: #4caf50; }
   .run-btn:hover { background: #4caf50; color: white; }
   .copy-btn { background: #1a1a2e; color: #888; }
   .copy-btn:hover { background: #3a3a4e; color: white; }
-
   .code-block-wrapper pre {
-    background: #1e1e2e;
-    color: #cdd6f4;
-    padding: 12px;
-    margin: 0;
-    overflow-x: auto;
-    font-size: 13px;
-    white-space: pre-wrap;
+    background: #1e1e2e; color: #cdd6f4;
+    padding: 12px; margin: 0;
+    overflow-x: auto; font-size: 13px; white-space: pre-wrap;
   }
-
   .code-output {
-    background: #0d1117;
-    color: #e0e0e0;
-    padding: 10px 12px;
-    font-family: monospace;
-    font-size: 12px;
-    white-space: pre-wrap;
+    background: #0d1117; color: #e0e0e0;
+    padding: 10px 12px; font-family: monospace;
+    font-size: 12px; white-space: pre-wrap;
     border-top: 1px solid #2a2a3e;
-    max-height: 200px;
-    overflow-y: auto;
+    max-height: 200px; overflow-y: auto;
   }
   .output-loading { color: #888; }
   .output-success { color: #4caf50; display: block; margin-bottom: 4px; }
   .output-error { color: #f44336; }
-
   .bubble code {
-    background: #f0f0f0;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 13px;
-    color: #d63384;
+    background: #f0f0f0; padding: 2px 6px;
+    border-radius: 4px; font-size: 13px; color: #d63384;
   }
-  .bubble pre code {
-    background: transparent;
-    padding: 0;
-    color: #cdd6f4;
-  }
+  .bubble pre code { background: transparent; padding: 0; color: #cdd6f4; }
 </style>
 </head>
 <body>
 
 <div class="header">
   <div class="header-left">
+    <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">✕</button>
     <div class="avatar">A</div>
     <div>
       <h1>AskAI Pakistan</h1>
@@ -107,35 +80,49 @@
   </div>
 </div>
 
-<div class="topics-bar">
-  <span class="chip" onclick="sendChip('Explain transformers with a Python example')">Transformers</span>
-  <span class="chip" onclick="sendChip('Explain backpropagation step by step')">Backpropagation</span>
-  <span class="chip" onclick="sendChip('What is RAG and how does it work?')">RAG</span>
-  <span class="chip" onclick="sendChip('Explain attention mechanism simply')">Attention</span>
-  <span class="chip" onclick="sendChip('What is gradient descent with Python code?')">Gradient Descent</span>
-  <span class="chip" onclick="sendChip('Explain CNNs with an example')">CNNs</span>
-  <span class="chip" onclick="sendChip('What is overfitting and how to prevent it?')">Overfitting</span>
-  <span class="chip" onclick="sendChip('Explain word embeddings simply')">Embeddings</span>
-  <span class="chip" onclick="sendChip('Difference between LSTM and GRU?')">LSTM vs GRU</span>
-  <span class="chip" onclick="sendChip('How does BERT work?')">BERT</span>
-  <span class="chip" onclick="sendChip('Explain PyTorch vs TensorFlow')">PyTorch vs TF</span>
-  <span class="chip" onclick="sendChip('What is fine-tuning in LLMs?')">Fine-tuning</span>
-</div>
+<div class="app-layout">
 
-<div class="chat-area" id="chat">
-  <div class="welcome" id="welcome">
-    <div class="icon">A</div>
-    <h2>Assalam o Alaikum!</h2>
-    <p>I'm your free AI tutor for Machine Learning and Data Science. Ask me anything — I'll explain it simply with code examples.</p>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Chat history</span>
+      <button class="new-chat-btn" onclick="startNewChat()">+ New</button>
+    </div>
+    <div class="chat-list" id="chat-list"></div>
   </div>
-</div>
 
-<div class="input-area">
-  <button class="clear-btn" onclick="clearChat()">New chat</button>
-  <textarea id="input" placeholder="Ask any AI or ML question..." rows="1" maxlength="500"></textarea>
-  <button class="send-btn" id="send-btn" onclick="sendMessage()">
-    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-  </button>
+  <div class="main-content">
+    <div class="topics-bar">
+      <span class="chip" onclick="sendChip('Explain transformers with a Python example')">Transformers</span>
+      <span class="chip" onclick="sendChip('Explain backpropagation step by step')">Backpropagation</span>
+      <span class="chip" onclick="sendChip('What is RAG and how does it work?')">RAG</span>
+      <span class="chip" onclick="sendChip('Explain attention mechanism simply')">Attention</span>
+      <span class="chip" onclick="sendChip('What is gradient descent with Python code?')">Gradient Descent</span>
+      <span class="chip" onclick="sendChip('Explain CNNs with an example')">CNNs</span>
+      <span class="chip" onclick="sendChip('What is overfitting and how to prevent it?')">Overfitting</span>
+      <span class="chip" onclick="sendChip('Explain word embeddings simply')">Embeddings</span>
+      <span class="chip" onclick="sendChip('Difference between LSTM and GRU?')">LSTM vs GRU</span>
+      <span class="chip" onclick="sendChip('How does BERT work?')">BERT</span>
+      <span class="chip" onclick="sendChip('Explain PyTorch vs TensorFlow')">PyTorch vs TF</span>
+      <span class="chip" onclick="sendChip('What is fine-tuning in LLMs?')">Fine-tuning</span>
+    </div>
+
+    <div class="chat-area" id="chat">
+      <div class="welcome" id="welcome">
+        <div class="icon">A</div>
+        <h2>Assalam o Alaikum!</h2>
+        <p>I'm your free AI tutor for Machine Learning and Data Science. Ask me anything — I'll explain it simply with code examples.</p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <button class="clear-btn" onclick="startNewChat()">New chat</button>
+      <textarea id="input" placeholder="Ask any AI or ML question..." rows="1" maxlength="500"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -143,6 +130,7 @@
 </script>
 <script src="/static/js/darkmode.js"></script>
 <script src="/static/js/codeblocks.js"></script>
+<script src="/static/js/sidebar.js"></script>
 <script src="/static/js/chat.js"></script>
 </body>
 </html>

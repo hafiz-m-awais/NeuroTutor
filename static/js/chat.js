@@ -23,13 +23,7 @@ function sendChip(text) {
 }
 
 function clearChat() {
-  conversationHistory = [];
-  chatEl.innerHTML = `
-    <div class="welcome" id="welcome">
-      <div class="icon">A</div>
-      <h2>Assalam o Alaikum!</h2>
-      <p>I'm your free AI tutor for Machine Learning and Data Science. Ask me anything!</p>
-    </div>`;
+  startNewChat();
 }
 
 function addMessage(role, text) {
@@ -160,6 +154,7 @@ async function sendMessage() {
     }
 
     conversationHistory.push({ role: 'assistant', content: fullText });
+    saveCurrentChat(conversationHistory);
 
   } catch (err) {
     removeTyping();
