@@ -69,8 +69,8 @@ AskAI Pakistan is a real-time, conversational AI tutor built specifically for Pa
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/askai-pakistan.git
-   cd askai-pakistan
+   git clone https://github.com/awaisriaz/NeuroTutor.git
+   cd NeuroTutor
    ```
 
 2. **Create a virtual environment:**
@@ -104,8 +104,8 @@ AskAI Pakistan is a real-time, conversational AI tutor built specifically for Pa
 To build and run the application using Docker:
 
 ```bash
-docker build -t askai-pakistan .
-docker run -p 7860:7860 --env-file .env askai-pakistan
+docker build -t neurotutor .
+docker run -p 7860:7860 --env-file .env neurotutor
 ```
 
 ---
