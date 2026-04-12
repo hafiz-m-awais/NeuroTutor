@@ -53,33 +53,50 @@ async function runCode(btn) {
   const wrapper = btn.closest('.code-block-wrapper');
   const pre = wrapper.querySelector('pre');
   const output = wrapper.querySelector('.code-output');
-  const code = pre.textContent;
+  const code = pre.textContent.trim();
 
   btn.textContent = '⏳ Running...';
   btn.disabled = true;
   output.style.display = 'block';
-  output.innerHTML = '<span class="output-loading">Loading Python...</span>';
+  output.innerHTML = '<span class="output-loading">Loading Python environment...</span>';
 
   try {
     if (!window.pyodide) {
-      output.innerHTML = '<span class="output-loading">Loading Pyodide (first time takes 10s)...</span>';
-      await loadPyodideRuntime();
+      output.innerHTML = '<span class="output-loading">First time setup — loading Pyodide (10-15 seconds)...</span>';
+      window.pyodide = await loadPyodide();
     }
+
+    output.innerHTML = '<span class="output-loading">Running...</span>';
 
     const result = await window.pyodide.runPythonAsync(`
 import sys
 import io
-sys.stdout = io.StringIO()
-sys.stderr = io.StringIO()
+import traceback
+
+_stdout = io.StringIO()
+_stderr = io.StringIO()
+
+sys.stdout = _stdout
+sys.stderr = _stderr
+
 try:
-    exec(${JSON.stringify(code)})
-    output = sys.stdout.getvalue()
-    error = sys.stderr.getvalue()
-    output + ('\\nSTDERR: ' + error if error else '')
+    exec("""${code.replace(/\\/g, '\\\\').replace(/"""/g, '\\"\\"\\"').replace(/`/g, '\\`')}""")
+    _out = _stdout.getvalue()
+    _err = _stderr.getvalue()
+    result = _out if _out else '(code ran with no output)'
+    if _err:
+        result += '\\nWarnings: ' + _err
 except Exception as e:
-    sys.stdout.getvalue() + '\\nError: ' + str(e)
+    result = 'Error: ' + traceback.format_exc()
+finally:
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+
+result
 `);
-    output.innerHTML = `<span class="output-success">Output:</span>\n${escapeOutput(result || '(no output)')}`;
+
+    output.innerHTML = `<span class="output-success">Output:</span>\n${escapeOutput(String(result))}`;
+
   } catch (err) {
     output.innerHTML = `<span class="output-error">Error: ${escapeOutput(err.message)}</span>`;
   }
