@@ -4,9 +4,9 @@ from flask import Flask, json, request, jsonify, render_template, Response, stre
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from config import Config
-from modules.ai import build_prompt, stream_response
 from modules.validators import validate_request
 import json 
+from modules.ai import build_prompt, stream_response, stream_debug, generate_quiz
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,10 +27,12 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
+
 @app.route('/')
 def home():
     log.info("Home accessed")
     return render_template('index.html')
+
 
 @app.route('/ask', methods=['POST'])
 @limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
@@ -50,15 +52,14 @@ def ask():
         return Response(
             stream_with_context(stream_response(prompt)),
             mimetype='text/event-stream',
-            headers={
-                'Cache-Control': 'no-cache',
-                'X-Accel-Buffering': 'no'
-            }
+            headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
         )
 
     except Exception as e:
         log.error(f"Error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
+
+
 @app.route('/debug', methods=['POST'])
 @limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
 def debug():
@@ -76,43 +77,19 @@ def debug():
         if len(code) > 2000:
             return jsonify({'error': 'Code too long. Max 2000 characters.'}), 400
 
-        log.info(f"Debug request: {code[:60]}...")
-
-        from modules.prompts import DEBUG_PROMPT
-        prompt = f"{DEBUG_PROMPT}\n\nBroken code to debug:\n```python\n{code}\n```"
-
-        def generate():
-            try:
-                response = Config.client.models.generate_content_stream(
-                    model=Config.GEMINI_MODEL,
-                    contents=prompt,
-                    config={
-                        "max_output_tokens": 1024,
-                        "temperature": 0.3,
-                    }
-                )
-                for chunk in response:
-                    chunk_text = getattr(chunk, 'text', None)
-                    if chunk_text:
-                        yield f"data: {json.dumps({'text': chunk_text})}\n\n"
-                yield "data: [DONE]\n\n"
-            except Exception as e:
-                log.error(f"Debug streaming error: {e}")
-                yield f"data: {json.dumps({'text': 'Something went wrong. Please try again.'})}\n\n"
-                yield "data: [DONE]\n\n"
+        log.info(f"Debug: {code[:60]}...")
 
         return Response(
-            stream_with_context(generate()),
+            stream_with_context(stream_debug(code)),
             mimetype='text/event-stream',
-            headers={
-                'Cache-Control': 'no-cache',
-                'X-Accel-Buffering': 'no'
-            }
+            headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
         )
 
     except Exception as e:
         log.error(f"Debug error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
+
+
 @app.route('/quiz', methods=['POST'])
 @limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
 def quiz():
@@ -130,29 +107,15 @@ def quiz():
         if len(topic) > 100:
             return jsonify({'error': 'Topic too long'}), 400
 
-        log.info(f"Quiz request: {topic}")
+        log.info(f"Quiz: {topic}")
 
-        from modules.prompts import QUIZ_PROMPT
-        prompt = QUIZ_PROMPT.format(topic=topic)
+        quiz_data, error = generate_quiz(topic)
 
-        response = Config.client.models.generate_content(
-            model=Config.GEMINI_MODEL,
-            contents=prompt,
-            config={
-                "max_output_tokens": 1024,
-                "temperature": 0.5,
-            }
-        )
+        if error:
+            return jsonify({'error': error}), 500
 
-        raw = response.text.strip() if response.text else ""
-        raw = raw.replace('```json', '').replace('```', '').strip()
-
-        quiz_data = json.loads(raw)
         return jsonify(quiz_data)
 
-    except json.JSONDecodeError as e:
-        log.error(f"Quiz JSON error: {e}")
-        return jsonify({'error': 'Failed to generate quiz. Please try again.'}), 500
     except Exception as e:
         log.error(f"Quiz error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500

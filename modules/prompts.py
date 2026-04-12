@@ -105,40 +105,42 @@ All other behavior — scope rules, mode routing, memory rules — stays exactly
 # QUIZ PROMPT
 # ────────────────────────────────────────────────────────────
 
-QUIZ_PROMPT = """Generate 3 multiple choice questions to test genuine understanding of: {topic}
+QUIZ_PROMPT = """You are a quiz generator for Pakistani CS students learning AI and Data Science.
+
+Generate exactly 3 MCQ questions about: {topic}
+
+Respond in this EXACT JSON format and nothing else:
+{{
+  "topic": "{topic}",
+  "questions": [
+    {{
+      "question": "Clear question text here?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct": 0,
+      "explanation": "One sentence explaining why this is correct."
+    }},
+    {{
+      "question": "Second question here?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct": 1,
+      "explanation": "One sentence explaining why this is correct."
+    }},
+    {{
+      "question": "Third question here?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct": 2,
+      "explanation": "One sentence explaining why this is correct."
+    }}
+  ]
+}}
 
 Rules:
-- Test understanding and application, not memorization
-- Each question must have exactly 4 options labeled A, B, C, D
-- Vary the correct answer position across the 3 questions (do not use the same letter more than once as the correct answer)
-- Explanation must say WHY the answer is correct in one clear sentence
-- Avoid trick questions — test if the student understood the concept
-
-Return ONLY valid JSON. No preamble, no markdown fences, no extra text.
-
-{
-  "topic": "REPLACE_TOPIC",
-  "questions": [
-    {
-      "question": "question text here",
-      "options": {
-        "A": "first option",
-        "B": "second option",
-        "C": "third option",
-        "D": "fourth option"
-      },
-      "correct": "A",
-      "explanation": "A is correct because..."
-    }
-  ]
-}"""
-
-# Usage: fill(QUIZ_PROMPT, topic="neural networks")
-# The {topic} marker in the template is replaced safely.
-# Note: the JSON example uses REPLACE_TOPIC as placeholder — 
-# the model reads the instruction above and fills in the real topic.
-
-
+- Questions must be about {topic} specifically
+- Options must be plausible, no obviously wrong answers
+- correct is the INDEX (0,1,2,3) of the right option
+- Keep questions practical not theoretical
+- Suitable for Pakistani CS students
+- Return ONLY valid JSON, no extra text"""
 # ────────────────────────────────────────────────────────────
 # ROADMAP PROMPT
 # ────────────────────────────────────────────────────────────
