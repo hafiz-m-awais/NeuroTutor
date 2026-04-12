@@ -19,6 +19,8 @@ log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 initialize_keys()
+log.info(f"Total API keys loaded: {len(Config.GEMINI_API_KEYS)}")
+
 limiter = Limiter(
     get_remote_address,
     app=app,
