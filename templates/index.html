@@ -237,6 +237,7 @@ body.dark .debug-footer { border-color: #2a2a3e; }
   <div class="main-content">
     <div class="topics-bar">
       <span class="debug-btn" onclick="openDebugger()">🐛 Debug my code</span>
+      <span class="quiz-btn" onclick="openQuiz()">🎯 Quiz me</span>
       <span class="chip" onclick="sendChip('Explain transformers with a Python example')">Transformers</span>
       <span class="chip" onclick="sendChip('Explain backpropagation step by step')">Backpropagation</span>
       <span class="chip" onclick="sendChip('What is RAG and how does it work?')">RAG</span>
@@ -269,7 +270,40 @@ body.dark .debug-footer { border-color: #2a2a3e; }
   </div>
 
 </div>
-
+<div class="quiz-panel" id="quiz-panel">
+  <div class="quiz-box">
+    <div class="quiz-header">
+      <div>
+        <h3>Quiz Mode</h3>
+        <p id="quiz-header-topic">Test your understanding</p>
+      </div>
+      <button class="quiz-close" onclick="closeQuiz()">✕</button>
+    </div>
+    <div class="quiz-body">
+      <div class="quiz-topic-input">
+        <input type="text" id="quiz-topic-input"
+               placeholder="Enter topic e.g. Gradient Descent, CNNs, BERT..."
+               maxlength="100"
+               onkeydown="if(event.key==='Enter') generateQuiz()"/>
+        <button class="quiz-generate-btn" id="quiz-generate-btn"
+                onclick="generateQuiz()">Generate</button>
+      </div>
+      <div class="quiz-chips">
+        <span class="quiz-chip" onclick="setQuizTopic('Gradient Descent')">Gradient Descent</span>
+        <span class="quiz-chip" onclick="setQuizTopic('Neural Networks')">Neural Networks</span>
+        <span class="quiz-chip" onclick="setQuizTopic('Overfitting')">Overfitting</span>
+        <span class="quiz-chip" onclick="setQuizTopic('CNNs')">CNNs</span>
+        <span class="quiz-chip" onclick="setQuizTopic('Transformers')">Transformers</span>
+        <span class="quiz-chip" onclick="setQuizTopic('RAG')">RAG</span>
+        <span class="quiz-chip" onclick="setQuizTopic('BERT')">BERT</span>
+        <span class="quiz-chip" onclick="setQuizTopic('Word Embeddings')">Embeddings</span>
+        <span class="quiz-chip" onclick="setQuizTopic('Backpropagation')">Backpropagation</span>
+        <span class="quiz-chip" onclick="setQuizTopic('Pandas')">Pandas</span>
+      </div>
+      <div id="quiz-body-content"></div>
+    </div>
+  </div>
+</div>
 <div class="debug-panel" id="debug-panel">
   <div class="debug-box">
     <div class="debug-header">
@@ -311,5 +345,6 @@ print(numbers[10])"></textarea>
 <script src="/static/js/sidebar.js"></script>
 <script src="/static/js/chat.js"></script>
 <script src="/static/js/debugger.js"></script>
+<script src="/static/js/quiz.js"></script>
 </body>
 </html>

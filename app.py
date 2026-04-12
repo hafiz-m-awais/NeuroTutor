@@ -113,6 +113,49 @@ def debug():
     except Exception as e:
         log.error(f"Debug error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
+@app.route('/quiz', methods=['POST'])
+@limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
+def quiz():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid request'}), 400
+
+        topic = data.get('topic', '').strip()
+
+        if not topic:
+            return jsonify({'error': 'Please provide a topic'}), 400
+        if len(topic) < 3:
+            return jsonify({'error': 'Topic is too short'}), 400
+        if len(topic) > 100:
+            return jsonify({'error': 'Topic too long'}), 400
+
+        log.info(f"Quiz request: {topic}")
+
+        from modules.prompts import QUIZ_PROMPT
+        prompt = QUIZ_PROMPT.format(topic=topic)
+
+        response = Config.client.models.generate_content(
+            model=Config.GEMINI_MODEL,
+            contents=prompt,
+            config={
+                "max_output_tokens": 1024,
+                "temperature": 0.5,
+            }
+        )
+
+        raw = response.text.strip() if response.text else ""
+        raw = raw.replace('```json', '').replace('```', '').strip()
+
+        quiz_data = json.loads(raw)
+        return jsonify(quiz_data)
+
+    except json.JSONDecodeError as e:
+        log.error(f"Quiz JSON error: {e}")
+        return jsonify({'error': 'Failed to generate quiz. Please try again.'}), 500
+    except Exception as e:
+        log.error(f"Quiz error: {e}", exc_info=True)
+        return jsonify({'error': 'Something went wrong. Please try again.'}), 500
 @app.route('/health')
 def health():
     return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})

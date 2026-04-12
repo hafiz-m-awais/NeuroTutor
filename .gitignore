@@ -12,6 +12,7 @@ venv.bak/
 app_ollama.py
 app_1.py
 prompts_old.py
+modules\prompts_old.py
 # ── Virtual Environment ───────────────────────────────
 .venv/
 venv/
