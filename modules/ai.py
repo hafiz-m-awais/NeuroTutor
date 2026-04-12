@@ -9,23 +9,41 @@ from modules.prompts import SYSTEM_PROMPT
 
 log = logging.getLogger(__name__)
 
-QUOTA_ERROR = "⏳ Switching to backup AI..."
-QUOTA_FINAL = "⏳ All AI providers are at limit. Please wait 1 minute and try again."
+QUOTA_FINAL = "⏳ All AI providers are busy. Please wait 1 minute and try again."
 GENERAL_ERROR = "Something went wrong. Please try again."
+
+OPENROUTER_MODELS = [
+    "qwen/qwen3.6-plus-preview:free",
+    "deepseek/deepseek-r1:free",
+    "qwen/qwen-2.5-72b-instruct:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "google/gemma-3-27b-it:free",
+    "nvidia/nemotron-3-super:free",
+    "mistralai/mistral-small-3.1:free",
+]
+
+_or_index = 0
+_or_lock = threading.Lock()
+
+def get_openrouter_model():
+    global _or_index
+    with _or_lock:
+        model = OPENROUTER_MODELS[_or_index % len(OPENROUTER_MODELS)]
+        _or_index += 1
+    log.info(f"OpenRouter model selected: {model}")
+    return model
 
 class KeyRotator:
     def __init__(self):
         self._lock = threading.Lock()
-        self._keys = []
         self._clients = []
         self._current = 0
-        self._cooldowns = {}
+        self._cooldowns: dict = {}
 
     def initialize(self, keys):
-        self._keys = keys
         self._clients = [genai.Client(api_key=k) for k in keys]
-        self._cooldowns = {i: 0.0 for i in range(len(keys))}
-        log.info(f"KeyRotator initialized with {len(keys)} Gemini keys")
+        self._cooldowns = {i: 0 for i in range(len(keys))}
+        log.info(f"Gemini: {len(keys)} keys loaded")
 
     def get_client(self):
         with self._lock:
@@ -34,39 +52,53 @@ class KeyRotator:
             for _ in range(total):
                 idx = self._current % total
                 self._current = (self._current + 1) % total
-                if now >= self._cooldowns.get(idx, 0.0):
+                if now >= self._cooldowns.get(idx, 0):
                     return self._clients[idx], idx
             return None, -1
 
-    def mark_quota_exceeded(self, idx):
+    def mark_exceeded(self, idx):
         with self._lock:
-            self._cooldowns[idx] = time.time() + 65.0
-            log.warning(f"Gemini Key {idx + 1} quota exceeded — cooling down 65s")
+            self._cooldowns[idx] = time.time() + 65
+            log.warning(f"Gemini key {idx+1} cooling down 65s")
 
     def all_on_cooldown(self):
         now = time.time()
-        return all(now < self._cooldowns.get(i, 0.0) for i in range(len(self._clients)))
+        return all(now < self._cooldowns.get(i, 0) for i in range(len(self._clients)))
 
 rotator = KeyRotator()
-grok_client = None
+groq_client = None
+openrouter_client = None
 
 def initialize_keys():
     keys = Config.load_keys()
     rotator.initialize(keys)
 
-    global grok_client
-    if Config.GROK_API_KEY:
-        grok_client = OpenAI(
-            api_key=Config.GROK_API_KEY,
-            base_url="https://api.x.ai/v1"
+    global groq_client, openrouter_client
+
+    if Config.GROQ_API_KEY:
+        groq_client = OpenAI(
+            api_key=Config.GROQ_API_KEY,
+            base_url="https://api.groq.com/openai/v1"
         )
-        log.info("Grok client initialized as fallback")
+        log.info("Groq client ready")
     else:
-        log.warning("No Grok API key found — fallback disabled")
+        log.warning("No Groq key found")
+
+    if Config.OPENROUTER_API_KEY:
+        openrouter_client = OpenAI(
+            api_key=Config.OPENROUTER_API_KEY,
+            base_url="https://openrouter.ai/api/v1"
+        )
+        log.info("OpenRouter client ready")
+    else:
+        log.warning("No OpenRouter key found")
 
 def is_quota_error(e):
     msg = str(e).lower()
-    return any(x in msg for x in ["quota", "limit", "429", "resource exhausted", "rate"])
+    return any(x in msg for x in [
+        "quota", "limit", "429", "resource exhausted",
+        "rate", "too many", "overloaded", "capacity"
+    ])
 
 def build_prompt(question: str, history: list) -> str:
     parts = [SYSTEM_PROMPT, ""]
@@ -82,159 +114,179 @@ def build_prompt(question: str, history: list) -> str:
     parts.append("Tutor:")
     return "\n".join(parts)
 
-def stream_with_grok(prompt: str, max_tokens: int = 1024, temperature: float = 0.7):
-    if not grok_client:
-        yield f"data: {json.dumps({'text': QUOTA_FINAL})}\n\n"
-        yield "data: [DONE]\n\n"
-        return
+def try_groq_stream(prompt: str, max_tokens: int = 1024, temperature: float = 0.7):
+    if not groq_client:
+        return False, None
     try:
-        log.info("Falling back to Grok")
-        stream = grok_client.chat.completions.create(
-            model=Config.GROK_MODEL,
+        log.info("Trying Groq...")
+        stream = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
             temperature=temperature,
             stream=True
         )
-        for chunk in stream:
-            text = chunk.choices[0].delta.content
-            if text:
-                yield f"data: {json.dumps({'text': text})}\n\n"
-        yield "data: [DONE]\n\n"
+        return True, stream
     except Exception as e:
-        log.error(f"Grok error: {e}")
-        yield f"data: {json.dumps({'text': QUOTA_FINAL})}\n\n"
-        yield "data: [DONE]\n\n"
+        log.warning(f"Groq failed: {e}")
+        return False, None
 
-def generate_with_grok(prompt: str, max_tokens: int = 1024):
-    if not grok_client:
-        return None, QUOTA_FINAL
-    try:
-        log.info("Quiz falling back to Grok")
-        response = grok_client.chat.completions.create(
-            model=Config.GROK_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-            temperature=0.5
-        )
-        content = response.choices[0].message.content
-        if not content:
-            return None, "Empty response from Grok API"
-        raw = content.strip()
-        raw = raw.replace('```json', '').replace('```', '').strip()
-        return json.loads(raw), None
-    except Exception as e:
-        log.error(f"Grok quiz error: {e}")
-        return None, GENERAL_ERROR
+def try_openrouter_stream(prompt: str, max_tokens: int = 1024, temperature: float = 0.7):
+    if not openrouter_client:
+        return False, None
+    # Try each OpenRouter model in rotation
+    tried = set()
+    total = len(OPENROUTER_MODELS)
+    for _ in range(total):
+        model = get_openrouter_model()
+        if model in tried:
+            continue
+        tried.add(model)
+        try:
+            log.info(f"Trying OpenRouter: {model}")
+            stream = openrouter_client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream=True
+            )
+            return True, stream
+        except Exception as e:
+            log.warning(f"OpenRouter {model} failed: {e}")
+            continue
+    return False, None
+
+def yield_openai_stream(stream):
+    for chunk in stream:
+        if chunk.choices and chunk.choices[0].delta.content:
+            text = chunk.choices[0].delta.content
+            yield f"data: {json.dumps({'text': text})}\n\n"
+    yield "data: [DONE]\n\n"
+
+def stream_with_fallbacks(prompt: str, max_tokens: int = 1024, temperature: float = 0.7):
+    # 1 — Try Gemini keys
+    if not rotator.all_on_cooldown():
+        max_attempts = len(Config.GEMINI_API_KEYS)
+        for attempt in range(max_attempts):
+            if rotator.all_on_cooldown():
+                break
+            client, idx = rotator.get_client()
+            if client is None:
+                break
+            try:
+                log.info(f"Trying Gemini key {idx+1}...")
+                response = client.models.generate_content_stream(
+                    model=Config.GEMINI_MODEL,
+                    contents=prompt,
+                    config={
+                        "max_output_tokens": max_tokens,
+                        "temperature": temperature,
+                    }
+                )
+                for chunk in response:
+                    chunk_text = getattr(chunk, 'text', None)
+                    if chunk_text:
+                        yield f"data: {json.dumps({'text': chunk_text})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+            except Exception as e:
+                if is_quota_error(e):
+                    rotator.mark_exceeded(idx)
+                    continue
+                else:
+                    log.error(f"Gemini error: {e}")
+                    break
+
+    # 2 — Try Groq
+    ok, stream = try_groq_stream(prompt, max_tokens, temperature)
+    if ok:
+        yield from yield_openai_stream(stream)
+        return
+
+    # 3 — Try OpenRouter models in rotation
+    ok, stream = try_openrouter_stream(prompt, max_tokens, temperature)
+    if ok:
+        yield from yield_openai_stream(stream)
+        return
+
+    # 4 — All failed
+    yield f"data: {json.dumps({'text': QUOTA_FINAL})}\n\n"
+    yield "data: [DONE]\n\n"
+
+def generate_with_fallback(prompt: str, max_tokens: int = 1024):
+    # 1 — Try Gemini
+    if not rotator.all_on_cooldown():
+        client, idx = rotator.get_client()
+        if client:
+            try:
+                response = client.models.generate_content(
+                    model=Config.GEMINI_MODEL,
+                    contents=prompt,
+                    config={
+                        "max_output_tokens": max_tokens,
+                        "temperature": 0.5
+                    }
+                )
+                raw = (response.text or '').strip()
+                raw = raw.replace('```json', '').replace('```', '').strip()
+                return json.loads(raw), None
+            except Exception as e:
+                if is_quota_error(e):
+                    rotator.mark_exceeded(idx)
+                else:
+                    log.error(f"Gemini generate error: {e}")
+
+    # 2 — Try Groq
+    if groq_client:
+        try:
+            log.info("Quiz trying Groq...")
+            response = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=0.5
+            )
+            raw = (response.choices[0].message.content or '').strip()
+            raw = raw.replace('```json', '').replace('```', '').strip()
+            return json.loads(raw), None
+        except Exception as e:
+            log.warning(f"Groq generate failed: {e}")
+
+    # 3 — Try OpenRouter models in rotation
+    if openrouter_client:
+        tried = set()
+        for _ in range(len(OPENROUTER_MODELS)):
+            model = get_openrouter_model()
+            if model in tried:
+                continue
+            tried.add(model)
+            try:
+                log.info(f"Quiz trying OpenRouter: {model}")
+                response = openrouter_client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max_tokens,
+                    temperature=0.5
+                )
+                raw = (response.choices[0].message.content or '').strip()
+                raw = raw.replace('```json', '').replace('```', '').strip()
+                return json.loads(raw), None
+            except Exception as e:
+                log.warning(f"OpenRouter {model} generate failed: {e}")
+                continue
+
+    return None, QUOTA_FINAL
 
 def stream_response(prompt: str):
-    max_attempts = len(Config.GEMINI_API_KEYS)
-    for attempt in range(max_attempts):
-        if rotator.all_on_cooldown():
-            yield from stream_with_grok(prompt)
-            return
-        client, idx = rotator.get_client()
-        if client is None:
-            yield from stream_with_grok(prompt)
-            return
-        try:
-            response = client.models.generate_content_stream(
-                model=Config.GEMINI_MODEL,
-                contents=prompt,
-                config={
-                    "max_output_tokens": Config.MAX_OUTPUT_TOKENS,
-                    "temperature": Config.TEMPERATURE,
-                }
-            )
-            for chunk in response:
-                chunk_text = getattr(chunk, 'text', None)
-                if chunk_text:
-                    yield f"data: {json.dumps({'text': chunk_text})}\n\n"
-            yield "data: [DONE]\n\n"
-            return
-        except Exception as e:
-            if is_quota_error(e):
-                rotator.mark_quota_exceeded(idx)
-                if attempt < max_attempts - 1:
-                    continue
-                yield from stream_with_grok(prompt)
-            else:
-                log.error(f"Stream error: {e}")
-                yield f"data: {json.dumps({'text': GENERAL_ERROR})}\n\n"
-                yield "data: [DONE]\n\n"
-            return
+    yield from stream_with_fallbacks(prompt)
 
 def stream_debug(code: str):
     from modules.prompts import DEBUG_PROMPT
     prompt = f"{DEBUG_PROMPT}\n\nBroken code to debug:\n```python\n{code}\n```"
-    max_attempts = len(Config.GEMINI_API_KEYS)
-    for attempt in range(max_attempts):
-        if rotator.all_on_cooldown():
-            yield from stream_with_grok(prompt, max_tokens=1024, temperature=0.3)
-            return
-        client, idx = rotator.get_client()
-        if client is None:
-            yield from stream_with_grok(prompt, max_tokens=1024, temperature=0.3)
-            return
-        try:
-            response = client.models.generate_content_stream(
-                model=Config.GEMINI_MODEL,
-                contents=prompt,
-                config={
-                    "max_output_tokens": 1024,
-                    "temperature": 0.3,
-                }
-            )
-            for chunk in response:
-                chunk_text = getattr(chunk, 'text', None)
-                if chunk_text:
-                    yield f"data: {json.dumps({'text': chunk_text})}\n\n"
-            yield "data: [DONE]\n\n"
-            return
-        except Exception as e:
-            if is_quota_error(e):
-                rotator.mark_quota_exceeded(idx)
-                if attempt < max_attempts - 1:
-                    continue
-                yield from stream_with_grok(prompt, max_tokens=1024, temperature=0.3)
-            else:
-                log.error(f"Debug error: {e}")
-                yield f"data: {json.dumps({'text': GENERAL_ERROR})}\n\n"
-                yield "data: [DONE]\n\n"
-            return
+    yield from stream_with_fallbacks(prompt, max_tokens=1024, temperature=0.3)
 
 def generate_quiz(topic: str):
     from modules.prompts import QUIZ_PROMPT
     prompt = QUIZ_PROMPT.replace("{topic}", topic)
-    max_attempts = len(Config.GEMINI_API_KEYS)
-    for attempt in range(max_attempts):
-        if rotator.all_on_cooldown():
-            return generate_with_grok(prompt)
-        client, idx = rotator.get_client()
-        if client is None:
-            return generate_with_grok(prompt)
-        try:
-            response = client.models.generate_content(
-                model=Config.GEMINI_MODEL,
-                contents=prompt,
-                config={
-                    "response_mime_type": "application/json",
-                    "max_output_tokens": 1024,
-                    "temperature": 0.5,
-                }
-            )
-            if not getattr(response, 'text', None):
-                return None, "Empty response from API"
-            raw = response.text.strip()
-            raw = raw.replace('```json', '').replace('```', '').strip()
-            return json.loads(raw), None
-        except Exception as e:
-            if is_quota_error(e):
-                rotator.mark_quota_exceeded(idx)
-                if attempt < max_attempts - 1:
-                    continue
-                return generate_with_grok(prompt)
-            else:
-                log.error(f"Quiz error: {e}")
-                return None, GENERAL_ERROR
-    return generate_with_grok(prompt)
+    return generate_with_fallback(prompt)
