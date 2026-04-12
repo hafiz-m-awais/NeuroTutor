@@ -6,7 +6,7 @@ from modules.prompts import SYSTEM_PROMPT
 
 log = logging.getLogger(__name__)
 
-client = genai.Client(api_key=Config.GEMINI_API_KEY)
+client = Config.client
 
 def build_prompt(question: str, history: list) -> str:
     parts = [SYSTEM_PROMPT, ""]

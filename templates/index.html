@@ -61,6 +61,150 @@
     border-radius: 4px; font-size: 13px; color: #d63384;
   }
   .bubble pre code { background: transparent; padding: 0; color: #cdd6f4; }
+  .debug-panel {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.debug-panel.open { display: flex; }
+.debug-box {
+  background: var(--db-bg, white);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+body.dark .debug-box { --db-bg: #1a1a2e; border-color: #2a2a3e; }
+.debug-header {
+  padding: 16px 20px;
+  background: #1a1a2e;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.debug-header h3 { font-size: 15px; font-weight: 600; }
+.debug-header p { font-size: 12px; opacity: 0.6; margin-top: 2px; }
+.debug-close {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.debug-close:hover { background: rgba(255,255,255,0.1); }
+.debug-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.debug-label { font-size: 12px; font-weight: 600; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.debug-textarea {
+  width: 100%;
+  height: 180px;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.6;
+}
+.debug-textarea:focus { border-color: #4f46e5; }
+.debug-submit {
+  width: 100%;
+  margin-top: 12px;
+  background: #1a1a2e;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.debug-submit:hover { opacity: 0.85; }
+.debug-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+.debug-result {
+  margin-top: 16px;
+  display: none;
+}
+.debug-result-content {
+  background: var(--dr-bg, #f8f9fa);
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+body.dark .debug-result-content { --dr-bg: #0f0f1a; border-color: #2a2a3e; color: #e0e0e0; }
+.debug-result-content pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 13px;
+  margin: 8px 0;
+  white-space: pre-wrap;
+}
+.debug-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+body.dark .debug-footer { border-color: #2a2a3e; }
+.debug-clear {
+  flex: 1;
+  padding: 9px;
+  background: transparent;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #888;
+  cursor: pointer;
+}
+.debug-clear:hover { border-color: #aaa; color: #444; }
+.debug-run-fixed {
+  flex: 1;
+  padding: 9px;
+  background: #1b5e20;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  color: white;
+  cursor: pointer;
+  display: none;
+}
+.debug-run-fixed:hover { opacity: 0.85; }
+.debug-btn {
+  padding: 6px 14px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+.debug-btn:hover { opacity: 0.85; }
 </style>
 </head>
 <body>
@@ -92,6 +236,7 @@
 
   <div class="main-content">
     <div class="topics-bar">
+      <span class="debug-btn" onclick="openDebugger()">🐛 Debug my code</span>
       <span class="chip" onclick="sendChip('Explain transformers with a Python example')">Transformers</span>
       <span class="chip" onclick="sendChip('Explain backpropagation step by step')">Backpropagation</span>
       <span class="chip" onclick="sendChip('What is RAG and how does it work?')">RAG</span>
@@ -125,6 +270,39 @@
 
 </div>
 
+<div class="debug-panel" id="debug-panel">
+  <div class="debug-box">
+    <div class="debug-header">
+      <div>
+        <h3>Code Debugger</h3>
+        <p>Paste your broken Python code — AI will find and fix the bug</p>
+      </div>
+      <button class="debug-close" onclick="closeDebugger()">✕</button>
+    </div>
+    <div class="debug-body">
+      <div class="debug-label">Paste your broken code here</div>
+      <textarea class="debug-textarea" id="debug-input"
+        placeholder="# Paste your broken Python code here...
+# Example:
+numbers = [1, 2, 3, 4, 5]
+print(numbers[10])"></textarea>
+      <button class="debug-submit" id="debug-submit" onclick="submitDebug()">
+        Find & Fix Bug
+      </button>
+      <div class="debug-result" id="debug-result">
+        <div class="debug-label" style="margin-top:4px;">AI Analysis</div>
+        <div class="debug-result-content" id="debug-result-content"></div>
+      </div>
+    </div>
+    <div class="debug-footer">
+      <button class="debug-clear" onclick="clearDebugger()">Clear</button>
+      <button class="debug-run-fixed" id="debug-run-fixed" onclick="runFixedCode()">
+        ▶ Run Fixed Code
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
   const Config = { MAX_HISTORY: 4 };
 </script>
@@ -132,5 +310,6 @@
 <script src="/static/js/codeblocks.js"></script>
 <script src="/static/js/sidebar.js"></script>
 <script src="/static/js/chat.js"></script>
+<script src="/static/js/debugger.js"></script>
 </body>
 </html>

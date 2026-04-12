@@ -1,6 +1,7 @@
 import os
 import sys
 from dotenv import load_dotenv
+from google import genai as _genai
 
 load_dotenv()
 
@@ -8,6 +9,8 @@ class Config:
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
     GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
     APP_NAME = os.getenv('APP_NAME', 'NeuroTutor')
+    
+    client = _genai.Client(api_key=GEMINI_API_KEY)
     
     # Input/Output Limits
     MAX_INPUT_LENGTH = 500

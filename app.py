@@ -1,11 +1,12 @@
 import logging
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, Response, stream_with_context
+from flask import Flask, json, request, jsonify, render_template, Response, stream_with_context
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from config import Config
 from modules.ai import build_prompt, stream_response
 from modules.validators import validate_request
+import json 
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,7 +59,60 @@ def ask():
     except Exception as e:
         log.error(f"Error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
+@app.route('/debug', methods=['POST'])
+@limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
+def debug():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid request'}), 400
 
+        code = data.get('code', '').strip()
+
+        if not code:
+            return jsonify({'error': 'Please paste some code first'}), 400
+        if len(code) < 10:
+            return jsonify({'error': 'Code is too short'}), 400
+        if len(code) > 2000:
+            return jsonify({'error': 'Code too long. Max 2000 characters.'}), 400
+
+        log.info(f"Debug request: {code[:60]}...")
+
+        from modules.prompts import DEBUG_PROMPT
+        prompt = f"{DEBUG_PROMPT}\n\nBroken code to debug:\n```python\n{code}\n```"
+
+        def generate():
+            try:
+                response = Config.client.models.generate_content_stream(
+                    model=Config.GEMINI_MODEL,
+                    contents=prompt,
+                    config={
+                        "max_output_tokens": 1024,
+                        "temperature": 0.3,
+                    }
+                )
+                for chunk in response:
+                    chunk_text = getattr(chunk, 'text', None)
+                    if chunk_text:
+                        yield f"data: {json.dumps({'text': chunk_text})}\n\n"
+                yield "data: [DONE]\n\n"
+            except Exception as e:
+                log.error(f"Debug streaming error: {e}")
+                yield f"data: {json.dumps({'text': 'Something went wrong. Please try again.'})}\n\n"
+                yield "data: [DONE]\n\n"
+
+        return Response(
+            stream_with_context(generate()),
+            mimetype='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'X-Accel-Buffering': 'no'
+            }
+        )
+
+    except Exception as e:
+        log.error(f"Debug error: {e}", exc_info=True)
+        return jsonify({'error': 'Something went wrong. Please try again.'}), 500
 @app.route('/health')
 def health():
     return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})
