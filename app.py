@@ -6,8 +6,7 @@ from flask_limiter.util import get_remote_address
 from config import Config
 from modules.validators import validate_request
 import json 
-from modules.ai import build_prompt, stream_response, stream_debug, generate_quiz
-
+from modules.ai import build_prompt, stream_response, stream_debug, generate_quiz, initialize_keys
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -19,7 +18,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 app = Flask(__name__)
-
+initialize_keys()
 limiter = Limiter(
     get_remote_address,
     app=app,
