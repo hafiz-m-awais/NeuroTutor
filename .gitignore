@@ -13,6 +13,7 @@ app_ollama.py
 app_1.py
 prompts_old.py
 modules\prompts_old.py
+PROJECT_REPORT.md
 # ── Virtual Environment ───────────────────────────────
 .venv/
 venv/

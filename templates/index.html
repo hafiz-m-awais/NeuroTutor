@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/static/css/chat.css" />
     <link rel="stylesheet" href="/static/css/dark.css" />
     <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
       .dark-toggle {
         background: transparent;
@@ -514,6 +515,12 @@
           </div>
         </div>
         <div class="roadmap-footer">
+          <select id="roadmap-format-select" class="filter-select" style="margin-right: 10px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: white;">
+            <option value="txt">Text (.txt)</option>
+            <option value="md">Markdown (.md)</option>
+            <option value="json">JSON (.json)</option>
+            <option value="pdf">PDF (.pdf)</option>
+          </select>
           <button
             class="roadmap-download-btn"
             id="roadmap-download-btn"
