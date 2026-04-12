@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 
 class Config:
     APP_NAME = os.getenv('APP_NAME', 'AskAI Pakistan')
-    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
+    GEMINI_MODEL = os.getenv('GEMINI_MODEL', "gemini-2.0-flash-lite")
     GROK_MODEL = os.getenv('GROK_MODEL', 'grok-beta')
     GROK_API_KEY = os.getenv('GROK_API_KEY')
     MAX_INPUT_LENGTH = 500

@@ -24,7 +24,7 @@ class KeyRotator:
     def initialize(self, keys):
         self._keys = keys
         self._clients = [genai.Client(api_key=k) for k in keys]
-        self._cooldowns = {i: 0 for i in range(len(keys))}
+        self._cooldowns = {i: 0.0 for i in range(len(keys))}
         log.info(f"KeyRotator initialized with {len(keys)} Gemini keys")
 
     def get_client(self):
@@ -34,18 +34,18 @@ class KeyRotator:
             for _ in range(total):
                 idx = self._current % total
                 self._current = (self._current + 1) % total
-                if now >= self._cooldowns.get(idx, 0):
+                if now >= self._cooldowns.get(idx, 0.0):
                     return self._clients[idx], idx
             return None, -1
 
     def mark_quota_exceeded(self, idx):
         with self._lock:
-            self._cooldowns[idx] = time.time() + 65
+            self._cooldowns[idx] = time.time() + 65.0
             log.warning(f"Gemini Key {idx + 1} quota exceeded — cooling down 65s")
 
     def all_on_cooldown(self):
         now = time.time()
-        return all(now < self._cooldowns.get(i, 0) for i in range(len(self._clients)))
+        return all(now < self._cooldowns.get(i, 0.0) for i in range(len(self._clients)))
 
 rotator = KeyRotator()
 grok_client = None
@@ -117,7 +117,10 @@ def generate_with_grok(prompt: str, max_tokens: int = 1024):
             max_tokens=max_tokens,
             temperature=0.5
         )
-        raw = response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        if not content:
+            return None, "Empty response from Grok API"
+        raw = content.strip()
         raw = raw.replace('```json', '').replace('```', '').strip()
         return json.loads(raw), None
     except Exception as e:
@@ -215,10 +218,13 @@ def generate_quiz(topic: str):
                 model=Config.GEMINI_MODEL,
                 contents=prompt,
                 config={
+                    "response_mime_type": "application/json",
                     "max_output_tokens": 1024,
                     "temperature": 0.5,
                 }
             )
+            if not getattr(response, 'text', None):
+                return None, "Empty response from API"
             raw = response.text.strip()
             raw = raw.replace('```json', '').replace('```', '').strip()
             return json.loads(raw), None
