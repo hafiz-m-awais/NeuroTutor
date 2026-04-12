@@ -25,6 +25,7 @@ async function generateQuiz(topic) {
   if (!topic) topic = document.getElementById('quiz-topic-input').value.trim();
   if (!topic) return;
 
+  const count = parseInt(document.getElementById('quiz-count').value) || 3;
   currentTopic = topic;
   quizData = null;
   answers = [];
@@ -42,7 +43,7 @@ async function generateQuiz(topic) {
     const res = await fetch('/quiz', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic })
+      body: JSON.stringify({ topic, count })
     });
 
     const data = await res.json();

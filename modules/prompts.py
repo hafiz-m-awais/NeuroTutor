@@ -104,43 +104,32 @@ All other behavior — scope rules, mode routing, memory rules — stays exactly
 # ────────────────────────────────────────────────────────────
 # QUIZ PROMPT
 # ────────────────────────────────────────────────────────────
+def get_quiz_prompt(topic: str, count: int) -> str:
+    return f"""You are a quiz generator for Pakistani CS students.
 
-QUIZ_PROMPT = """You are a quiz generator for Pakistani CS students learning AI and Data Science.
+Generate EXACTLY {count} MCQ questions about: {topic}
 
-Generate exactly 3 MCQ questions about: {topic}
+IMPORTANT: You MUST generate {count} questions. Not 3. Not fewer. Exactly {count}.
 
-Respond in this EXACT JSON format and nothing else:
+Respond ONLY in this JSON format:
 {{
   "topic": "{topic}",
   "questions": [
     {{
-      "question": "Clear question text here?",
+      "question": "question text?",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correct": 0,
-      "explanation": "One sentence explaining why this is correct."
-    }},
-    {{
-      "question": "Second question here?",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct": 1,
-      "explanation": "One sentence explaining why this is correct."
-    }},
-    {{
-      "question": "Third question here?",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct": 2,
-      "explanation": "One sentence explaining why this is correct."
+      "explanation": "why this is correct"
     }}
   ]
 }}
 
 Rules:
-- Questions must be about {topic} specifically
-- Options must be plausible, no obviously wrong answers
-- correct is the INDEX (0,1,2,3) of the right option
-- Keep questions practical not theoretical
-- Suitable for Pakistani CS students
-- Return ONLY valid JSON, no extra text"""
+- EXACTLY {count} question objects in the array
+- correct is index 0-3
+- Practical questions for Pakistani CS students
+- Return ONLY valid JSON, nothing else"""
+
 # ────────────────────────────────────────────────────────────
 # ROADMAP PROMPT
 # ────────────────────────────────────────────────────────────

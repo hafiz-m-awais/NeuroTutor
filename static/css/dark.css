@@ -13,3 +13,4 @@ body.dark .welcome h2 { color: #e0e0e0; }
 body.dark .chat-area::-webkit-scrollbar-thumb { background: #3a3a4e; }
 body.dark .code-block-wrapper { background: #0d0d1a; }
 body.dark .code-header { background: #1a1a2e; border-color: #2a2a3e; }
+body.dark #quiz-count { background: #0f0f1a; border-color: #2a2a3e; color: #e0e0e0; }

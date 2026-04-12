@@ -1,350 +1,574 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NeuroTutor — AI Tutor for CS Students</title>
-<link rel="stylesheet" href="/static/css/main.css">
-<link rel="stylesheet" href="/static/css/chat.css">
-<link rel="stylesheet" href="/static/css/dark.css">
-<script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
-<style>
-  .dark-toggle {
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.3);
-    color: white;
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 16px;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.2s;
-  }
-  .dark-toggle:hover { background: rgba(255,255,255,0.1); }
-  .code-block-wrapper {
-    border-radius: 8px; overflow: hidden;
-    margin: 8px 0; border: 1px solid #2a2a3e;
-  }
-  .code-header {
-    background: #2a2a3e; padding: 6px 12px;
-    display: flex; justify-content: space-between;
-    align-items: center; border-bottom: 1px solid #3a3a4e;
-  }
-  .code-lang { font-size: 11px; color: #888; font-family: monospace; }
-  .code-actions { display: flex; gap: 6px; }
-  .run-btn, .copy-btn {
-    padding: 3px 10px; border-radius: 4px;
-    font-size: 11px; cursor: pointer;
-    border: 1px solid #3a3a4e; transition: all 0.2s;
-  }
-  .run-btn { background: #1a3a1a; color: #4caf50; }
-  .run-btn:hover { background: #4caf50; color: white; }
-  .copy-btn { background: #1a1a2e; color: #888; }
-  .copy-btn:hover { background: #3a3a4e; color: white; }
-  .code-block-wrapper pre {
-    background: #1e1e2e; color: #cdd6f4;
-    padding: 12px; margin: 0;
-    overflow-x: auto; font-size: 13px; white-space: pre-wrap;
-  }
-  .code-output {
-    background: #0d1117; color: #e0e0e0;
-    padding: 10px 12px; font-family: monospace;
-    font-size: 12px; white-space: pre-wrap;
-    border-top: 1px solid #2a2a3e;
-    max-height: 200px; overflow-y: auto;
-  }
-  .output-loading { color: #888; }
-  .output-success { color: #4caf50; display: block; margin-bottom: 4px; }
-  .output-error { color: #f44336; }
-  .bubble code {
-    background: #f0f0f0; padding: 2px 6px;
-    border-radius: 4px; font-size: 13px; color: #d63384;
-  }
-  .bubble pre code { background: transparent; padding: 0; color: #cdd6f4; }
-  .debug-panel {
-  display: none;
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 1000;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-.debug-panel.open { display: flex; }
-.debug-box {
-  background: var(--db-bg, white);
-  border-radius: 16px;
-  width: 100%;
-  max-width: 680px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid #e0e0e0;
-}
-body.dark .debug-box { --db-bg: #1a1a2e; border-color: #2a2a3e; }
-.debug-header {
-  padding: 16px 20px;
-  background: #1a1a2e;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-}
-.debug-header h3 { font-size: 15px; font-weight: 600; }
-.debug-header p { font-size: 12px; opacity: 0.6; margin-top: 2px; }
-.debug-close {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.3);
-  color: white;
-  width: 30px; height: 30px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 16px;
-  display: flex; align-items: center; justify-content: center;
-}
-.debug-close:hover { background: rgba(255,255,255,0.1); }
-.debug-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
-.debug-label { font-size: 12px; font-weight: 600; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-.debug-textarea {
-  width: 100%;
-  height: 180px;
-  background: #1e1e2e;
-  color: #cdd6f4;
-  border: 1px solid #2a2a3e;
-  border-radius: 8px;
-  padding: 12px;
-  font-family: 'Courier New', monospace;
-  font-size: 13px;
-  resize: vertical;
-  outline: none;
-  line-height: 1.6;
-}
-.debug-textarea:focus { border-color: #4f46e5; }
-.debug-submit {
-  width: 100%;
-  margin-top: 12px;
-  background: #1a1a2e;
-  color: white;
-  border: none;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-.debug-submit:hover { opacity: 0.85; }
-.debug-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-.debug-result {
-  margin-top: 16px;
-  display: none;
-}
-.debug-result-content {
-  background: var(--dr-bg, #f8f9fa);
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px;
-  font-size: 14px;
-  line-height: 1.8;
-  white-space: pre-wrap;
-}
-body.dark .debug-result-content { --dr-bg: #0f0f1a; border-color: #2a2a3e; color: #e0e0e0; }
-.debug-result-content pre {
-  background: #1e1e2e;
-  color: #cdd6f4;
-  padding: 12px;
-  border-radius: 8px;
-  overflow-x: auto;
-  font-size: 13px;
-  margin: 8px 0;
-  white-space: pre-wrap;
-}
-.debug-footer {
-  padding: 12px 20px;
-  border-top: 1px solid #e0e0e0;
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-body.dark .debug-footer { border-color: #2a2a3e; }
-.debug-clear {
-  flex: 1;
-  padding: 9px;
-  background: transparent;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #888;
-  cursor: pointer;
-}
-.debug-clear:hover { border-color: #aaa; color: #444; }
-.debug-run-fixed {
-  flex: 1;
-  padding: 9px;
-  background: #1b5e20;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  color: white;
-  cursor: pointer;
-  display: none;
-}
-.debug-run-fixed:hover { opacity: 0.85; }
-.debug-btn {
-  padding: 6px 14px;
-  background: #dc2626;
-  color: white;
-  border: none;
-  border-radius: 20px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  white-space: nowrap;
-}
-.debug-btn:hover { opacity: 0.85; }
-</style>
-</head>
-<body>
-
-<div class="header">
-  <div class="header-left">
-    <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">✕</button>
-    <div class="avatar">N</div>
-    <div>
-      <h1>NeuroTutor</h1>
-      <p>AI Tutor for CS Students</p>
-    </div>
-  </div>
-  <div class="header-right">
-    <div class="status"><div class="dot"></div>Online</div>
-    <button class="dark-toggle" id="dark-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">🌙</button>
-  </div>
-</div>
-
-<div class="app-layout">
-
-  <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <span class="sidebar-title">Chat history</span>
-      <button class="new-chat-btn" onclick="startNewChat()">+ New</button>
-    </div>
-    <div class="chat-list" id="chat-list"></div>
-  </div>
-
-  <div class="main-content">
-    <div class="topics-bar">
-      <span class="debug-btn" onclick="openDebugger()">🐛 Debug my code</span>
-      <span class="quiz-btn" onclick="openQuiz()">🎯 Quiz me</span>
-      <span class="chip" onclick="sendChip('Explain transformers with a Python example')">Transformers</span>
-      <span class="chip" onclick="sendChip('Explain backpropagation step by step')">Backpropagation</span>
-      <span class="chip" onclick="sendChip('What is RAG and how does it work?')">RAG</span>
-      <span class="chip" onclick="sendChip('Explain attention mechanism simply')">Attention</span>
-      <span class="chip" onclick="sendChip('What is gradient descent with Python code?')">Gradient Descent</span>
-      <span class="chip" onclick="sendChip('Explain CNNs with an example')">CNNs</span>
-      <span class="chip" onclick="sendChip('What is overfitting and how to prevent it?')">Overfitting</span>
-      <span class="chip" onclick="sendChip('Explain word embeddings simply')">Embeddings</span>
-      <span class="chip" onclick="sendChip('Difference between LSTM and GRU?')">LSTM vs GRU</span>
-      <span class="chip" onclick="sendChip('How does BERT work?')">BERT</span>
-      <span class="chip" onclick="sendChip('Explain PyTorch vs TensorFlow')">PyTorch vs TF</span>
-      <span class="chip" onclick="sendChip('What is fine-tuning in LLMs?')">Fine-tuning</span>
-    </div>
-
-    <div class="chat-area" id="chat">
-      <div class="welcome" id="welcome">
-        <div class="icon">N</div>
-        <h2>Welcome to NeuroTutor!</h2>
-        <p>I'm your AI tutor for Machine Learning and Data Science. Ask me anything — I'll explain it simply with code examples.</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NeuroTutor — AI Tutor for CS Students</title>
+    <link rel="stylesheet" href="/static/css/main.css" />
+    <link rel="stylesheet" href="/static/css/chat.css" />
+    <link rel="stylesheet" href="/static/css/dark.css" />
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <style>
+      .dark-toggle {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+      }
+      .dark-toggle:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .code-block-wrapper {
+        border-radius: 8px;
+        overflow: hidden;
+        margin: 8px 0;
+        border: 1px solid #2a2a3e;
+      }
+      .code-header {
+        background: #2a2a3e;
+        padding: 6px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #3a3a4e;
+      }
+      .code-lang {
+        font-size: 11px;
+        color: #888;
+        font-family: monospace;
+      }
+      .code-actions {
+        display: flex;
+        gap: 6px;
+      }
+      .run-btn,
+      .copy-btn {
+        padding: 3px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        cursor: pointer;
+        border: 1px solid #3a3a4e;
+        transition: all 0.2s;
+      }
+      .run-btn {
+        background: #1a3a1a;
+        color: #4caf50;
+      }
+      .run-btn:hover {
+        background: #4caf50;
+        color: white;
+      }
+      .copy-btn {
+        background: #1a1a2e;
+        color: #888;
+      }
+      .copy-btn:hover {
+        background: #3a3a4e;
+        color: white;
+      }
+      .code-block-wrapper pre {
+        background: #1e1e2e;
+        color: #cdd6f4;
+        padding: 12px;
+        margin: 0;
+        overflow-x: auto;
+        font-size: 13px;
+        white-space: pre-wrap;
+      }
+      .code-output {
+        background: #0d1117;
+        color: #e0e0e0;
+        padding: 10px 12px;
+        font-family: monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+        border-top: 1px solid #2a2a3e;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .output-loading {
+        color: #888;
+      }
+      .output-success {
+        color: #4caf50;
+        display: block;
+        margin-bottom: 4px;
+      }
+      .output-error {
+        color: #f44336;
+      }
+      .bubble code {
+        background: #f0f0f0;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #d63384;
+      }
+      .bubble pre code {
+        background: transparent;
+        padding: 0;
+        color: #cdd6f4;
+      }
+      .debug-panel {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .debug-panel.open {
+        display: flex;
+      }
+      .debug-box {
+        background: var(--db-bg, white);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 680px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #e0e0e0;
+      }
+      body.dark .debug-box {
+        --db-bg: #1a1a2e;
+        border-color: #2a2a3e;
+      }
+      .debug-header {
+        padding: 16px 20px;
+        background: #1a1a2e;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .debug-header h3 {
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .debug-header p {
+        font-size: 12px;
+        opacity: 0.6;
+        margin-top: 2px;
+      }
+      .debug-close {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .debug-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .debug-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 20px;
+      }
+      .debug-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #888;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .debug-textarea {
+        width: 100%;
+        height: 180px;
+        background: #1e1e2e;
+        color: #cdd6f4;
+        border: 1px solid #2a2a3e;
+        border-radius: 8px;
+        padding: 12px;
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        resize: vertical;
+        outline: none;
+        line-height: 1.6;
+      }
+      .debug-textarea:focus {
+        border-color: #4f46e5;
+      }
+      .debug-submit {
+        width: 100%;
+        margin-top: 12px;
+        background: #1a1a2e;
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+      .debug-submit:hover {
+        opacity: 0.85;
+      }
+      .debug-submit:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .debug-result {
+        margin-top: 16px;
+        display: none;
+      }
+      .debug-result-content {
+        background: var(--dr-bg, #f8f9fa);
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 16px;
+        font-size: 14px;
+        line-height: 1.8;
+        white-space: pre-wrap;
+      }
+      body.dark .debug-result-content {
+        --dr-bg: #0f0f1a;
+        border-color: #2a2a3e;
+        color: #e0e0e0;
+      }
+      .debug-result-content pre {
+        background: #1e1e2e;
+        color: #cdd6f4;
+        padding: 12px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 13px;
+        margin: 8px 0;
+        white-space: pre-wrap;
+      }
+      .debug-footer {
+        padding: 12px 20px;
+        border-top: 1px solid #e0e0e0;
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      body.dark .debug-footer {
+        border-color: #2a2a3e;
+      }
+      .debug-clear {
+        flex: 1;
+        padding: 9px;
+        background: transparent;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #888;
+        cursor: pointer;
+      }
+      .debug-clear:hover {
+        border-color: #aaa;
+        color: #444;
+      }
+      .debug-run-fixed {
+        flex: 1;
+        padding: 9px;
+        background: #1b5e20;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        color: white;
+        cursor: pointer;
+        display: none;
+      }
+      .debug-run-fixed:hover {
+        opacity: 0.85;
+      }
+      .debug-btn {
+        padding: 6px 14px;
+        background: #dc2626;
+        color: white;
+        border: none;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: opacity 0.2s;
+        white-space: nowrap;
+      }
+      .debug-btn:hover {
+        opacity: 0.85;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-left">
+        <button
+          class="sidebar-toggle"
+          id="sidebar-toggle"
+          onclick="toggleSidebar()"
+        >
+          ✕
+        </button>
+        <div class="avatar">N</div>
+        <div>
+          <h1>NeuroTutor</h1>
+          <p>AI Tutor for CS Students</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="status">
+          <div class="dot"></div>
+          Online
+        </div>
+        <button
+          class="dark-toggle"
+          id="dark-toggle"
+          onclick="toggleDarkMode()"
+          title="Toggle dark mode"
+        >
+          🌙
+        </button>
       </div>
     </div>
 
-    <div class="input-area">
-      <button class="clear-btn" onclick="startNewChat()">New chat</button>
-      <textarea id="input" placeholder="Ask any AI or ML question..." rows="1" maxlength="500"></textarea>
-      <button class="send-btn" id="send-btn" onclick="sendMessage()">
-        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-      </button>
-    </div>
-  </div>
+    <div class="app-layout">
+      <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Chat history</span>
+          <button class="new-chat-btn" onclick="startNewChat()">+ New</button>
+        </div>
+        <div class="chat-list" id="chat-list"></div>
+      </div>
 
-</div>
-<div class="quiz-panel" id="quiz-panel">
-  <div class="quiz-box">
-    <div class="quiz-header">
-      <div>
-        <h3>Quiz Mode</h3>
-        <p id="quiz-header-topic">Test your understanding</p>
+      <div class="main-content">
+        <div class="topics-bar">
+          <span class="debug-btn" onclick="openDebugger()"
+            >🐛 Debug my code</span
+          >
+          <span class="quiz-btn" onclick="openQuiz()">🎯 Quiz me</span>
+          <span
+            class="chip"
+            onclick="sendChip('Explain transformers with a Python example')"
+            >Transformers</span
+          >
+          <span
+            class="chip"
+            onclick="sendChip('Explain backpropagation step by step')"
+            >Backpropagation</span
+          >
+          <span
+            class="chip"
+            onclick="sendChip('What is RAG and how does it work?')"
+            >RAG</span
+          >
+          <span
+            class="chip"
+            onclick="sendChip('Explain attention mechanism simply')"
+            >Attention</span
+          >
+          <span
+            class="chip"
+            onclick="sendChip('What is gradient descent with Python code?')"
+            >Gradient Descent</span
+          >
+          <span class="chip" onclick="sendChip('Explain CNNs with an example')"
+            >CNNs</span
+          >
+          <span
+            class="chip"
+            onclick="sendChip('What is overfitting and how to prevent it?')"
+            >Overfitting</span
+          >
+          <span
+            class="chip"
+            onclick="sendChip('Explain word embeddings simply')"
+            >Embeddings</span
+          >
+          <span
+            class="chip"
+            onclick="sendChip('Difference between LSTM and GRU?')"
+            >LSTM vs GRU</span
+          >
+          <span class="chip" onclick="sendChip('How does BERT work?')"
+            >BERT</span
+          >
+          <span class="chip" onclick="sendChip('Explain PyTorch vs TensorFlow')"
+            >PyTorch vs TF</span
+          >
+          <span class="chip" onclick="sendChip('What is fine-tuning in LLMs?')"
+            >Fine-tuning</span
+          >
+        </div>
+
+        <div class="chat-area" id="chat">
+          <div class="welcome" id="welcome">
+            <div class="icon">N</div>
+            <h2>Welcome to NeuroTutor!</h2>
+            <p>
+              I'm your AI tutor for Machine Learning and Data Science. Ask me
+              anything — I'll explain it simply with code examples.
+            </p>
+          </div>
+        </div>
+
+        <div class="input-area">
+          <button class="clear-btn" onclick="startNewChat()">New chat</button>
+          <textarea
+            id="input"
+            placeholder="Ask any AI or ML question..."
+            rows="1"
+            maxlength="500"
+          ></textarea>
+          <button class="send-btn" id="send-btn" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            </svg>
+          </button>
+        </div>
       </div>
-      <button class="quiz-close" onclick="closeQuiz()">✕</button>
     </div>
-    <div class="quiz-body">
-      <div class="quiz-topic-input">
-        <input type="text" id="quiz-topic-input"
-               placeholder="Enter topic e.g. Gradient Descent, CNNs, BERT..."
-               maxlength="100"
-               onkeydown="if(event.key==='Enter') generateQuiz()"/>
-        <button class="quiz-generate-btn" id="quiz-generate-btn"
-                onclick="generateQuiz()">Generate</button>
+    <div class="quiz-panel" id="quiz-panel">
+      <div class="quiz-box">
+        <div class="quiz-header">
+          <div>
+            <h3>Quiz Mode</h3>
+            <p id="quiz-header-topic">Test your understanding</p>
+          </div>
+          <button class="quiz-close" onclick="closeQuiz()">✕</button>
+        </div>
+        <div class="quiz-body">
+          <div class="quiz-topic-input">
+            <input
+              type="text"
+              id="quiz-topic-input"
+              placeholder="Enter topic e.g. Gradient Descent, CNNs..."
+              maxlength="100"
+              onkeydown="if (event.key === 'Enter') generateQuiz();"
+            />
+            <select
+              id="quiz-count"
+              style="
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 10px;
+                font-size: 14px;
+                outline: none;
+                background: white;
+                color: #1a1a1a;
+                cursor: pointer;
+              "
+            >
+              <option value="3">3 Qs</option>
+              <option value="5">5 Qs</option>
+              <option value="7">7 Qs</option>
+              <option value="10">10 Qs</option>
+            </select>
+            <button
+              class="quiz-generate-btn"
+              id="quiz-generate-btn"
+              onclick="generateQuiz()"
+            >
+              Generate
+            </button>
+          </div>
+
+          <div class="quiz-chips">
+            <span class="quiz-chip" onclick="setQuizTopic('Gradient Descent')"
+              >Gradient Descent</span
+            >
+            <span class="quiz-chip" onclick="setQuizTopic('Neural Networks')"
+              >Neural Networks</span
+            >
+            <span class="quiz-chip" onclick="setQuizTopic('Overfitting')"
+              >Overfitting</span
+            >
+            <span class="quiz-chip" onclick="setQuizTopic('CNNs')">CNNs</span>
+            <span class="quiz-chip" onclick="setQuizTopic('Transformers')"
+              >Transformers</span
+            >
+            <span class="quiz-chip" onclick="setQuizTopic('RAG')">RAG</span>
+            <span class="quiz-chip" onclick="setQuizTopic('BERT')">BERT</span>
+            <span class="quiz-chip" onclick="setQuizTopic('Word Embeddings')"
+              >Embeddings</span
+            >
+            <span class="quiz-chip" onclick="setQuizTopic('Backpropagation')"
+              >Backpropagation</span
+            >
+            <span class="quiz-chip" onclick="setQuizTopic('Pandas')"
+              >Pandas</span
+            >
+          </div>
+          <div id="quiz-body-content"></div>
+        </div>
       </div>
-      <div class="quiz-chips">
-        <span class="quiz-chip" onclick="setQuizTopic('Gradient Descent')">Gradient Descent</span>
-        <span class="quiz-chip" onclick="setQuizTopic('Neural Networks')">Neural Networks</span>
-        <span class="quiz-chip" onclick="setQuizTopic('Overfitting')">Overfitting</span>
-        <span class="quiz-chip" onclick="setQuizTopic('CNNs')">CNNs</span>
-        <span class="quiz-chip" onclick="setQuizTopic('Transformers')">Transformers</span>
-        <span class="quiz-chip" onclick="setQuizTopic('RAG')">RAG</span>
-        <span class="quiz-chip" onclick="setQuizTopic('BERT')">BERT</span>
-        <span class="quiz-chip" onclick="setQuizTopic('Word Embeddings')">Embeddings</span>
-        <span class="quiz-chip" onclick="setQuizTopic('Backpropagation')">Backpropagation</span>
-        <span class="quiz-chip" onclick="setQuizTopic('Pandas')">Pandas</span>
-      </div>
-      <div id="quiz-body-content"></div>
     </div>
-  </div>
-</div>
-<div class="debug-panel" id="debug-panel">
-  <div class="debug-box">
-    <div class="debug-header">
-      <div>
-        <h3>Code Debugger</h3>
-        <p>Paste your broken Python code — AI will find and fix the bug</p>
-      </div>
-      <button class="debug-close" onclick="closeDebugger()">✕</button>
-    </div>
-    <div class="debug-body">
-      <div class="debug-label">Paste your broken code here</div>
-      <textarea class="debug-textarea" id="debug-input"
-        placeholder="# Paste your broken Python code here...
+    <div class="debug-panel" id="debug-panel">
+      <div class="debug-box">
+        <div class="debug-header">
+          <div>
+            <h3>Code Debugger</h3>
+            <p>Paste your broken Python code — AI will find and fix the bug</p>
+          </div>
+          <button class="debug-close" onclick="closeDebugger()">✕</button>
+        </div>
+        <div class="debug-body">
+          <div class="debug-label">Paste your broken code here</div>
+          <textarea
+            class="debug-textarea"
+            id="debug-input"
+            placeholder="# Paste your broken Python code here...
 # Example:
 numbers = [1, 2, 3, 4, 5]
-print(numbers[10])"></textarea>
-      <button class="debug-submit" id="debug-submit" onclick="submitDebug()">
-        Find & Fix Bug
-      </button>
-      <div class="debug-result" id="debug-result">
-        <div class="debug-label" style="margin-top:4px;">AI Analysis</div>
-        <div class="debug-result-content" id="debug-result-content"></div>
+print(numbers[10])"
+          ></textarea>
+          <button
+            class="debug-submit"
+            id="debug-submit"
+            onclick="submitDebug()"
+          >
+            Find & Fix Bug
+          </button>
+          <div class="debug-result" id="debug-result">
+            <div class="debug-label" style="margin-top: 4px">AI Analysis</div>
+            <div class="debug-result-content" id="debug-result-content"></div>
+          </div>
+        </div>
+        <div class="debug-footer">
+          <button class="debug-clear" onclick="clearDebugger()">Clear</button>
+          <button
+            class="debug-run-fixed"
+            id="debug-run-fixed"
+            onclick="runFixedCode()"
+          >
+            ▶ Run Fixed Code
+          </button>
+        </div>
       </div>
     </div>
-    <div class="debug-footer">
-      <button class="debug-clear" onclick="clearDebugger()">Clear</button>
-      <button class="debug-run-fixed" id="debug-run-fixed" onclick="runFixedCode()">
-        ▶ Run Fixed Code
-      </button>
-    </div>
-  </div>
-</div>
 
-<script>
-  const Config = { MAX_HISTORY: 4 };
-</script>
-<script src="/static/js/darkmode.js"></script>
-<script src="/static/js/codeblocks.js"></script>
-<script src="/static/js/sidebar.js"></script>
-<script src="/static/js/chat.js"></script>
-<script src="/static/js/debugger.js"></script>
-<script src="/static/js/quiz.js"></script>
-</body>
+    <script>
+      const Config = { MAX_HISTORY: 4 };
+    </script>
+    <script src="/static/js/darkmode.js"></script>
+    <script src="/static/js/codeblocks.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/chat.js"></script>
+    <script src="/static/js/debugger.js"></script>
+    <script src="/static/js/quiz.js"></script>
+  </body>
 </html>

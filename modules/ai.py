@@ -286,7 +286,7 @@ def stream_debug(code: str):
     prompt = f"{DEBUG_PROMPT}\n\nBroken code to debug:\n```python\n{code}\n```"
     yield from stream_with_fallbacks(prompt, max_tokens=1024, temperature=0.3)
 
-def generate_quiz(topic: str):
-    from modules.prompts import QUIZ_PROMPT
-    prompt = QUIZ_PROMPT.replace("{topic}", topic)
-    return generate_with_fallback(prompt)
+def generate_quiz(topic: str, count: int = 3):
+    from modules.prompts import get_quiz_prompt
+    prompt = get_quiz_prompt(topic, count)
+    return generate_with_fallback(prompt, max_tokens=count * 350)

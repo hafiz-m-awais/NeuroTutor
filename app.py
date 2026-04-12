@@ -100,6 +100,8 @@ def quiz():
             return jsonify({'error': 'Invalid request'}), 400
 
         topic = data.get('topic', '').strip()
+        count = int(data.get('count', 3))
+        count = max(3, min(count, 10))
 
         if not topic:
             return jsonify({'error': 'Please provide a topic'}), 400
@@ -110,7 +112,7 @@ def quiz():
 
         log.info(f"Quiz: {topic}")
 
-        quiz_data, error = generate_quiz(topic)
+        quiz_data, error = generate_quiz(topic, count)
 
         if error:
             return jsonify({'error': error}), 500
