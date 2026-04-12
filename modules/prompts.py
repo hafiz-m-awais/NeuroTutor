@@ -135,42 +135,41 @@ Rules:
 # ROADMAP PROMPT
 # ────────────────────────────────────────────────────────────
 
-ROADMAP_PROMPT = """Create a practical {days}-day learning roadmap for: {topic}
-Designed for a {level}-level Pakistani CS student with limited time and free resources only.
+def get_roadmap_prompt(topic: str, days: int, level: str) -> str:
+    return f"""You are a learning roadmap generator for Pakistani CS students.
+
+Create a {days}-day learning roadmap for: {topic}
+Student level: {level}
+
+Respond ONLY in this exact JSON format:
+{{
+  "topic": "{topic}",
+  "days": {days},
+  "level": "{level}",
+  "goal": "One sentence describing what student will achieve",
+  "weeks": [
+    {{
+      "week": 1,
+      "title": "Week title",
+      "days": [
+        {{
+          "day": 1,
+          "topic": "Topic name",
+          "tasks": ["Task 1", "Task 2", "Task 3"],
+          "resource": "Best free resource name and link"
+        }}
+      ]
+    }}
+  ]
+}}
 
 Rules:
-- Each day should be realistic: 1-2 hours maximum
-- Resources must be free. Do NOT generate URLs — provide the platform name and a search query instead
-- Tasks must be specific and actionable, not vague
-- Include a milestone: what the student can do after completing that day
-
-Return ONLY valid JSON. No preamble, no markdown fences, no extra text.
-
-{
-  "title": "roadmap title",
-  "topic": "topic name",
-  "level": "beginner|intermediate|advanced",
-  "total_days": 30,
-  "days": [
-    {
-      "day": 1,
-      "title": "short day title",
-      "tasks": [
-        "specific task 1",
-        "specific task 2"
-      ],
-      "resources": [
-        {
-          "name": "descriptive resource name",
-          "platform": "YouTube|Kaggle|fast.ai|official docs|freeCodeCamp|etc",
-          "search_query": "exact search terms to find this resource"
-        }
-      ],
-      "milestone": "what the student can do after this day"
-    }
-  ]
-}"""
-
+- Generate exactly {days} day entries total across all weeks
+- Each week has 7 days (last week may have fewer)
+- Tasks should be specific and actionable
+- Resources must be free — YouTube, Kaggle, fast.ai, Coursera free tier, docs
+- Focus on Pakistani students with basic hardware
+- Return ONLY valid JSON, nothing else"""
 # Usage: fill(ROADMAP_PROMPT, topic="machine learning", level="beginner", days="30")
 
 

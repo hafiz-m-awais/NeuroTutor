@@ -122,6 +122,41 @@ def quiz():
     except Exception as e:
         log.error(f"Quiz error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
+@app.route('/roadmap', methods=['POST'])
+@limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
+def roadmap():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid request'}), 400
+
+        topic = data.get('topic', '').strip()
+        days = int(data.get('days', 30))
+        level = data.get('level', 'beginner').strip()
+
+        if not topic:
+            return jsonify({'error': 'Please provide a topic'}), 400
+        if len(topic) < 3:
+            return jsonify({'error': 'Topic too short'}), 400
+        if len(topic) > 100:
+            return jsonify({'error': 'Topic too long'}), 400
+
+        days = max(7, min(days, 90))
+
+        log.info(f"Roadmap: {topic} — {days} days — {level}")
+
+        from modules.ai import generate_roadmap
+        roadmap_data, error = generate_roadmap(topic, days, level)
+
+        if error:
+            return jsonify({'error': error}), 500
+
+        return jsonify(roadmap_data)
+
+    except Exception as e:
+        log.error(f"Roadmap error: {e}", exc_info=True)
+        return jsonify({'error': 'Something went wrong. Please try again.'}), 500
+    
 @app.route('/health')
 def health():
     return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})

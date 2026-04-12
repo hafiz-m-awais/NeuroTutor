@@ -361,6 +361,7 @@
             >🐛 Debug my code</span
           >
           <span class="quiz-btn" onclick="openQuiz()">🎯 Quiz me</span>
+          <span class="roadmap-btn" onclick="openRoadmap()">🗺️ Roadmap</span>
           <span
             class="chip"
             onclick="sendChip('Explain transformers with a Python example')"
@@ -438,6 +439,94 @@
             <svg viewBox="0 0 24 24">
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
             </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="roadmap-panel" id="roadmap-panel">
+      <div class="roadmap-box">
+        <div class="roadmap-header">
+          <div>
+            <h3>Learning Roadmap Generator</h3>
+            <p>Get a personalized day-by-day study plan</p>
+          </div>
+          <button class="roadmap-close" onclick="closeRoadmap()">✕</button>
+        </div>
+        <div class="roadmap-form">
+          <input
+            type="text"
+            id="roadmap-topic-input"
+            placeholder="e.g. Machine Learning, NLP, Deep Learning..."
+            maxlength="100"
+            onkeydown="if (event.key === 'Enter') generateRoadmap();"
+          />
+          <select id="roadmap-days">
+            <option value="7">7 days</option>
+            <option value="14">14 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="60">60 days</option>
+            <option value="90">90 days</option>
+          </select>
+          <select id="roadmap-level">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+          <button
+            class="roadmap-generate-btn"
+            id="roadmap-generate-btn"
+            onclick="generateRoadmap()"
+          >
+            Generate
+          </button>
+        </div>
+        <div class="roadmap-chips">
+          <span
+            class="roadmap-chip"
+            onclick="setRoadmapTopic('Machine Learning')"
+            >Machine Learning</span
+          >
+          <span class="roadmap-chip" onclick="setRoadmapTopic('Deep Learning')"
+            >Deep Learning</span
+          >
+          <span class="roadmap-chip" onclick="setRoadmapTopic('NLP')">NLP</span>
+          <span
+            class="roadmap-chip"
+            onclick="setRoadmapTopic('Computer Vision')"
+            >Computer Vision</span
+          >
+          <span
+            class="roadmap-chip"
+            onclick="setRoadmapTopic('Python for Data Science')"
+            >Python for DS</span
+          >
+          <span class="roadmap-chip" onclick="setRoadmapTopic('MLOps')"
+            >MLOps</span
+          >
+          <span class="roadmap-chip" onclick="setRoadmapTopic('RAG and LLMs')"
+            >RAG + LLMs</span
+          >
+        </div>
+        <div class="roadmap-body" id="roadmap-body">
+          <div class="roadmap-loading">
+            Choose a topic above and click Generate to create your personalized
+            roadmap.
+          </div>
+        </div>
+        <div class="roadmap-footer">
+          <button
+            class="roadmap-download-btn"
+            id="roadmap-download-btn"
+            onclick="downloadRoadmap()"
+          >
+            ⬇ Download Roadmap
+          </button>
+          <button
+            class="roadmap-share-btn"
+            id="roadmap-share-btn"
+            onclick="shareRoadmap()"
+          >
+            📤 Share
           </button>
         </div>
       </div>
@@ -570,5 +659,6 @@ print(numbers[10])"
     <script src="/static/js/chat.js"></script>
     <script src="/static/js/debugger.js"></script>
     <script src="/static/js/quiz.js"></script>
+    <script src="/static/js/roadmap.js"></script>
   </body>
 </html>

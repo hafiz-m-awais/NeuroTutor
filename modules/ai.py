@@ -290,3 +290,7 @@ def generate_quiz(topic: str, count: int = 3):
     from modules.prompts import get_quiz_prompt
     prompt = get_quiz_prompt(topic, count)
     return generate_with_fallback(prompt, max_tokens=count * 350)
+def generate_roadmap(topic: str, days: int, level: str):
+    from modules.prompts import get_roadmap_prompt
+    prompt = get_roadmap_prompt(topic, days, level)
+    return generate_with_fallback(prompt, max_tokens=days * 200)
