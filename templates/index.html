@@ -362,6 +362,7 @@
             >🐛 Debug my code</span
           >
           <span class="quiz-btn" onclick="openQuiz()">🎯 Quiz me</span>
+          <span class="upload-btn" onclick="openUploader()">📂 Upload</span>
           <span class="roadmap-btn" onclick="openRoadmap()">🗺️ Roadmap</span>
           <span
             class="chip"
@@ -444,6 +445,57 @@
         </div>
       </div>
     </div>
+    <div class="upload-panel" id="upload-panel">
+  <div class="upload-box">
+    <div class="upload-header">
+      <div>
+        <h3>Document Uploader</h3>
+        <p>Upload any file — get a summary and ask questions</p>
+      </div>
+      <button class="upload-close" onclick="closeUploader()">✕</button>
+    </div>
+    <div class="upload-body">
+      <div class="drop-zone" id="drop-zone">
+        <div class="drop-icon">📂</div>
+        <div class="drop-title">Drop your file here or click to browse</div>
+        <div class="drop-sub">PDF, Python, Jupyter, Excel, CSV, Word, text files</div>
+        <div class="drop-types">Max size: 10MB</div>
+        <input type="file" id="file-input" style="display:none"
+               accept=".pdf,.txt,.py,.js,.html,.css,.json,.csv,.md,.docx,.xlsx,.ipynb,.java,.cpp,.c"/>
+      </div>
+
+      <div class="upload-file-info" id="upload-file-info">
+        <span class="file-icon" id="file-icon-display">📄</span>
+        <div class="file-details">
+          <div class="file-name" id="file-name-display"></div>
+          <div class="file-size" id="file-size-display"></div>
+        </div>
+        <button class="file-remove" onclick="removeFile()">✕</button>
+      </div>
+
+      <button class="upload-submit-btn" id="upload-submit-btn"
+              onclick="submitUpload()">📤 Upload & Analyze</button>
+
+      <div class="upload-summary" id="upload-summary">
+        <div class="doc-qa-label">Document Summary</div>
+        <div class="summary-content" id="summary-content"></div>
+      </div>
+
+      <div class="doc-qa-section" id="doc-qa-section">
+        <div class="doc-qa-label" style="margin-top:16px;">Ask about this document</div>
+        <div class="suggested-questions" id="suggested-questions"></div>
+        <div class="doc-qa-input-row" style="margin-top:10px;">
+          <input type="text" class="doc-qa-input" id="doc-qa-input"
+                 placeholder="Ask anything about this document..."
+                 onkeydown="if(event.key==='Enter') askAboutDocument()"/>
+          <button class="doc-qa-btn" id="doc-qa-btn"
+                  onclick="askAboutDocument()">Ask</button>
+        </div>
+        <div class="doc-qa-answer" id="doc-qa-answer"></div>
+      </div>
+    </div>
+  </div>
+</div>
     <div class="roadmap-panel" id="roadmap-panel">
       <div class="roadmap-box">
         <div class="roadmap-header">
@@ -667,5 +719,6 @@ print(numbers[10])"
     <script src="/static/js/debugger.js"></script>
     <script src="/static/js/quiz.js"></script>
     <script src="/static/js/roadmap.js"></script>
+    <script src="/static/js/uploader.js"></script>
   </body>
 </html>

@@ -5,7 +5,8 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from config import Config
 from modules.validators import validate_request
-import json 
+from werkzeug.utils import secure_filename
+import json as json_module
 from modules.ai import build_prompt, stream_response, stream_debug, generate_quiz, initialize_keys
 logging.basicConfig(
     level=logging.INFO,
@@ -156,7 +157,93 @@ def roadmap():
     except Exception as e:
         log.error(f"Roadmap error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
-    
+document_store = {}
+
+@app.route('/upload', methods=['POST'])
+@limiter.limit("10 per minute")
+def upload():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+
+        file = request.files['file']
+        if not file or file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+
+        from modules.file_processor import allowed_file, extract_text, MAX_FILE_SIZE
+        filename = secure_filename(file.filename)
+
+        if not allowed_file(filename):
+            return jsonify({'error': f'File type not supported. Allowed: pdf, txt, py, docx, xlsx, csv, ipynb and more'}), 400
+
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(0)
+
+        if size > MAX_FILE_SIZE:
+            return jsonify({'error': 'File too large. Max 10MB.'}), 400
+
+        content, file_type = extract_text(file, filename)
+
+        if not content:
+            return jsonify({'error': 'Could not extract text from this file.'}), 400
+
+        session_id = request.headers.get('X-Session-Id', 'default')
+        document_store[session_id] = {
+            'filename': filename,
+            'content': content,
+            'type': file_type
+        }
+
+        log.info(f"File uploaded: {filename} ({file_type}, {len(content)} chars)")
+
+        from modules.prompts import get_summary_prompt
+        from modules.ai import generate_with_fallback
+        prompt = get_summary_prompt(filename, content)
+        summary_data, error = generate_with_fallback(prompt, max_tokens=1024)
+
+        if error:
+            return jsonify({'error': error}), 500
+
+        return jsonify({
+            'filename': filename,
+            'type': file_type,
+            'size': len(content),
+            'summary': summary_data
+        })
+
+    except Exception as e:
+        log.error(f"Upload error: {e}", exc_info=True)
+        return jsonify({'error': 'Upload failed. Please try again.'}), 500
+
+@app.route('/ask-document', methods=['POST'])
+@limiter.limit("15 per minute")
+def ask_document():
+    try:
+        data = request.get_json()
+        question = data.get('question', '').strip()
+        session_id = data.get('session_id', 'default')
+
+        if not question:
+            return jsonify({'error': 'Please ask a question'}), 400
+
+        doc = document_store.get(session_id)
+        if not doc:
+            return jsonify({'error': 'No document found. Please upload a file first.'}), 400
+
+        from modules.prompts import get_document_qa_prompt
+        from modules.ai import stream_with_fallbacks
+        prompt = get_document_qa_prompt(doc['filename'], doc['content'], question)
+
+        return Response(
+            stream_with_context(stream_with_fallbacks(prompt)),
+            mimetype='text/event-stream',
+            headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+        )
+
+    except Exception as e:
+        log.error(f"Document QA error: {e}", exc_info=True)
+        return jsonify({'error': 'Something went wrong.'}), 500    
 @app.route('/health')
 def health():
     return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})

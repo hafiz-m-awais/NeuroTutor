@@ -3,7 +3,6 @@
 # Supervisor-reviewed and stress-tested
 # ============================================================
 
-import re
 
 # ────────────────────────────────────────────────────────────
 # SAFE PROMPT FORMATTER — use this instead of .format()
@@ -243,6 +242,43 @@ Analyze this broken code and respond in exactly this format:
 
 Be concise, clear and encouraging. The student is learning."""
 
+# ────────────────────────────────────────────────────────────
+# DOCUMENT SUMMARY & Q&A PROMPTS
+# ────────────────────────────────────────────────────────────
+
+def get_summary_prompt(filename: str, content: str) -> str:
+    return f"""You are an AI assistant helping a Pakistani CS student understand a document.
+
+Document name: {filename}
+Document content:
+{content[:8000]}
+
+Provide a clear summary in this format:
+
+📄 DOCUMENT SUMMARY
+[2-3 sentence overview of what this document is about]
+
+🔑 KEY POINTS
+[5-7 most important points as bullet points]
+
+💡 MAIN CONCEPTS
+[List the main technical concepts covered]
+
+❓ SUGGESTED QUESTIONS
+[3 questions the student might want to ask about this document]
+
+Keep it concise and student-friendly."""
+
+def get_document_qa_prompt(filename: str, content: str, question: str) -> str:
+    return f"""You are helping a Pakistani CS student understand a document.
+
+Document: {filename}
+Content: {content[:8000]}
+
+Student question: {question}
+
+Answer based on the document content. If the answer is not in the document, say so clearly.
+Keep the answer concise and educational."""
 # ────────────────────────────────────────────────────────────
 # CONCEPT COMPARISON PROMPT
 # ────────────────────────────────────────────────────────────
