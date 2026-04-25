@@ -502,7 +502,10 @@ async function submitCompare() {
       body: JSON.stringify({ concept_a: a, concept_b: b })
     });
     
-    if (!res.ok) throw new Error('Compare failed');
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Compare failed');
+    }
     
     const data = await res.json();
     
@@ -529,7 +532,10 @@ async function submitCompare() {
     saveCurrentChat(conversationHistory);
     
   } catch (err) {
-    bubble.innerHTML = 'Sorry, failed to compare these concepts.';
+    const errorMsg = `Error: ${err.message}`;
+    bubble.innerHTML = errorMsg;
+    conversationHistory.push({ role: 'assistant', content: errorMsg });
+    saveCurrentChat(conversationHistory);
   }
 }
 </script>
