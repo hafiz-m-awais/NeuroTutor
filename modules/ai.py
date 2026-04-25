@@ -216,7 +216,7 @@ def stream_with_fallbacks(prompt: str, max_tokens: int = 1024, temperature: floa
     yield f"data: {json.dumps({'text': QUOTA_FINAL})}\n\n"
     yield "data: [DONE]\n\n"
 
-def generate_with_fallback(prompt: str, max_tokens: int = 1024):
+def generate_with_fallback(prompt: str, max_tokens: int = 1024, is_json: bool = True):
     # 1 — Try all Gemini keys in rotation
     if not rotator.all_on_cooldown():
         max_attempts = len(Config.GEMINI_API_KEYS)
@@ -236,8 +236,10 @@ def generate_with_fallback(prompt: str, max_tokens: int = 1024):
                     }
                 )
                 raw = (response.text or '').strip()
-                raw = raw.replace('```json', '').replace('```', '').strip()
-                return json.loads(raw), None
+                if is_json:
+                    raw = raw.replace('```json', '').replace('```', '').strip()
+                    return json.loads(raw), None
+                return raw, None
             except Exception as e:
                 if is_quota_error(e):
                     rotator.mark_exceeded(idx)
@@ -258,8 +260,10 @@ def generate_with_fallback(prompt: str, max_tokens: int = 1024):
                 temperature=0.5
             )
             raw = (response.choices[0].message.content or '').strip()
-            raw = raw.replace('```json', '').replace('```', '').strip()
-            return json.loads(raw), None
+            if is_json:
+                raw = raw.replace('```json', '').replace('```', '').strip()
+                return json.loads(raw), None
+            return raw, None
         except Exception as e:
             log.warning(f"Groq generate failed: {e}")
 
@@ -280,8 +284,10 @@ def generate_with_fallback(prompt: str, max_tokens: int = 1024):
                     temperature=0.5
                 )
                 raw = (response.choices[0].message.content or '').strip()
-                raw = raw.replace('```json', '').replace('```', '').strip()
-                return json.loads(raw), None
+                if is_json:
+                    raw = raw.replace('```json', '').replace('```', '').strip()
+                    return json.loads(raw), None
+                return raw, None
             except Exception as e:
                 log.warning(f"OpenRouter {model} generate failed: {e}")
                 continue
