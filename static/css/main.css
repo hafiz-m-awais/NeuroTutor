@@ -1,8 +1,39 @@
+:root {
+  --bg: #f0f2f5;
+  --sidebar-bg: #1a1a2e;
+  --sidebar-text: #ffffff;
+  --sidebar-border: #484852;
+  --text: #333333;
+  --subtext: #666666;
+  --border: #e0e0e0;
+  --card-bg: #ffffff;
+  --accent: #4f46e5;
+}
+
+body.dark {
+  --bg: #0f0f1a;
+  --sidebar-bg: #1a1a2e;
+  --sidebar-text: #e0e0e0;
+  --sidebar-border: #2a2a3e;
+  --text: #e0e0e0;
+  --subtext: #888888;
+  --border: #2a2a3e;
+  --card-bg: #1a1a2e;
+}
+
+/* Light mode sidebar adjustment */
+body:not(.dark) {
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #333333;
+  --sidebar-border: #e0e0e0;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
-  background: #f0f2f5;
+  background: var(--bg);
+  color: var(--text);
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -158,12 +189,13 @@ textarea#input:focus { border-color: #4f46e5; }
 
 .sidebar {
   width: 260px;
-  background: #1a1a2e;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  border-right: 1px solid #2a2a3e;
-  transition: width 0.3s;
+  border-right: 1px solid var(--sidebar-border);
+  transition: width 0.3s, background 0.3s, border-color 0.3s;
   overflow: hidden;
 }
 
@@ -275,7 +307,7 @@ textarea#input:focus { border-color: #4f46e5; }
   overflow: hidden;
 }
 
-body.dark .sidebar { background: #0f0f1a; border-color: #1a1a2e; }
+/* body.dark .sidebar overrides are now handled by variables */
 body.dark .sidebar-header { border-color: #1a1a2e; }
 body.dark .chat-item:hover { background: rgba(255,255,255,0.05); }
 .quiz-btn {

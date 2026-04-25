@@ -291,6 +291,33 @@ def ask_document():
 
     except Exception as e:
         log.error(f"Document QA error: {e}", exc_info=True)
+        return jsonify({'error': 'Something went wrong.'}), 500
+
+@app.route('/summarize-document', methods=['POST'])
+@limiter.limit("15 per minute")
+def summarize_document():
+    try:
+        data = request.get_json()
+        document_id = data.get('document_id')
+
+        if not document_id:
+            return jsonify({'error': 'Missing document ID'}), 400
+
+        doc = document_store.get(document_id)
+        if not doc:
+            return jsonify({'error': 'Document not found or expired.'}), 400
+
+        from modules.prompts import get_summary_prompt
+        from modules.ai import stream_with_fallbacks
+        prompt = get_summary_prompt(doc['filename'], doc['content'])
+
+        return Response(
+            stream_with_context(stream_with_fallbacks(prompt)),
+            mimetype='text/event-stream',
+            headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+        )
+    except Exception as e:
+        log.error(f"Summarize error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong.'}), 500    
 @app.route('/health')
 def health():

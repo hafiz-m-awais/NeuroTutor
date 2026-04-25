@@ -225,7 +225,7 @@ function renderDocumentChips() {
     activeDocuments.forEach(doc => {
       const chip = document.createElement('div');
       chip.className = 'kb-chip';
-      chip.style = "display: flex; align-items: center; justify-content: space-between; background: rgba(5, 150, 105, 0.05); border: 1px solid rgba(5, 150, 105, 0.2); padding: 8px 12px; border-radius: 8px; font-size: 13px; color: var(--text); transition: all 0.2s;";
+      chip.style = "display: flex; align-items: center; justify-content: space-between; background: rgba(5, 150, 105, 0.05); border: 1px solid rgba(5, 150, 105, 0.2); padding: 8px 12px; border-radius: 8px; font-size: 13px; color: var(--sidebar-text); transition: all 0.2s;";
       chip.onmouseover = () => chip.style.background = 'rgba(5, 150, 105, 0.15)';
       chip.onmouseout = () => chip.style.background = 'rgba(5, 150, 105, 0.05)';
       
@@ -234,10 +234,72 @@ function renderDocumentChips() {
           <span style="margin-right: 8px; font-size: 16px;">📄</span>
           <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${doc.name}">${doc.name}</span>
         </div>
-        <button onclick="removeChatAttachment('${doc.id}')" style="background: none; border: none; color: #888; cursor: pointer; padding: 4px; margin-left: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.color='#ef4444'; this.style.background='rgba(239, 68, 68, 0.1)';" onmouseout="this.style.color='#888'; this.style.background='none';">✕</button>
+        <div style="display: flex; gap: 4px;">
+          <button onclick="summarizeDocument('${doc.id}', '${doc.name}')" title="Summarize Document" style="background: none; border: none; color: #888; cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.color='var(--accent)'; this.style.background='rgba(5, 150, 105, 0.1)';" onmouseout="this.style.color='#888'; this.style.background='none';">📝</button>
+          <button onclick="removeChatAttachment('${doc.id}')" title="Remove Document" style="background: none; border: none; color: #888; cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.color='#ef4444'; this.style.background='rgba(239, 68, 68, 0.1)';" onmouseout="this.style.color='#888'; this.style.background='none';">✕</button>
+        </div>
       `;
       container.appendChild(chip);
     });
+  }
+}
+
+async function summarizeDocument(docId, docName) {
+  const prompt = `Please summarize the document: ${docName}`;
+  conversationHistory.push({ role: 'user', content: prompt });
+  addMessage('user', prompt);
+  
+  const bubble = addMessage('bot', '');
+  bubble.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+  scrollBottom();
+  
+  isStreaming = true;
+  document.getElementById('send-btn').disabled = true;
+  
+  try {
+    const res = await fetch('/summarize-document', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ document_id: docId })
+    });
+    
+    if (!res.ok) throw new Error('Summarization failed');
+    
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.text) {
+              fullText += parsed.text;
+              bubble.innerHTML = formatText(fullText);
+              scrollBottom();
+            }
+          } catch (e) {}
+        }
+      }
+    }
+    
+    conversationHistory.push({ role: 'assistant', content: fullText });
+    saveCurrentChat(conversationHistory);
+    
+  } catch (err) {
+    bubble.innerHTML = 'Sorry, failed to summarize this document.';
+  } finally {
+    isStreaming = false;
+    document.getElementById('send-btn').disabled = false;
   }
 }
 

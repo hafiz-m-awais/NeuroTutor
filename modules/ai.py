@@ -12,14 +12,14 @@ log = logging.getLogger(__name__)
 QUOTA_FINAL = "⏳ All AI providers are busy. Please wait 1 minute and try again."
 GENERAL_ERROR = "Something went wrong. Please try again."
 
-OPENROUTER_MODELS = [
-    "deepseek/deepseek-chat-v3-0324:free",
+OPENROUTER_MODELS = [ 
     "qwen/qwen3-235b-a22b:free",
     "meta-llama/llama-3.3-70b-instruct:free",
     "qwen/qwen-2.5-72b-instruct:free",
     "google/gemma-3-12b-it:free",
     "deepseek/deepseek-r1-distill-qwen-32b:free",
     "mistralai/mistral-7b-instruct:free",
+    "deepseek/deepseek-chat-v3-0324:free"
 ]
 
 _or_index = 0
