@@ -177,7 +177,7 @@ async function handleChatAttachment(input) {
   formData.append('file', file);
 
   const bubble = addMessage('bot', '');
-  bubble.innerHTML = '<span class="output-loading">Uploading and analyzing document...</span>';
+  bubble.innerHTML = '<span class="output-loading">Adding document to Knowledge Base...</span>';
   scrollBottom();
 
   try {
@@ -197,7 +197,7 @@ async function handleChatAttachment(input) {
     activeDocuments.push({ id: data.document_id, name: data.filename });
     renderDocumentChips();
 
-    const mdSummary = `📄 **Document Uploaded:** \`${data.filename}\`\n\n**Summary:**\n${data.summary}\n\n*You can now ask me questions about this document (or upload another to compare)!*`;
+    const mdSummary = `✅ **Document Added:** \`${data.filename}\`\n\n*This document is now in your Knowledge Base. You can upload more documents or ask questions about them!*`;
     
     bubble.innerHTML = formatText(mdSummary);
     conversationHistory.push({ role: 'assistant', content: mdSummary });

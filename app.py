@@ -244,19 +244,10 @@ def upload():
 
         log.info(f"File uploaded: {filename} ({file_type}, {len(content)} chars)")
 
-        from modules.prompts import get_summary_prompt
-        from modules.ai import generate_with_fallback
-        prompt = get_summary_prompt(filename, content)
-        summary_data, error = generate_with_fallback(prompt, max_tokens=1024, is_json=False)
-
-        if error:
-            return jsonify({'error': error}), 500
-
         return jsonify({
             'filename': filename,
             'type': file_type,
             'size': len(content),
-            'summary': summary_data,
             'document_id': document_id
         })
 
