@@ -363,7 +363,6 @@
           >
           <span class="quiz-btn" onclick="openQuiz()">🎯 Quiz me</span>
           <span class="compare-btn" onclick="openCompare()" style="background: rgba(236, 72, 153, 0.1); color: #ec4899; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;">⚖️ Compare</span>
-          <span class="upload-btn" onclick="openUploader()">📂 Upload</span>
           <span class="roadmap-btn" onclick="openRoadmap()">🗺️ Roadmap</span>
           <span
             class="chip"
@@ -431,71 +430,33 @@
         </div>
 
         <div class="input-area">
-          <button class="clear-btn" onclick="startNewChat()">New chat</button>
-          <textarea
-            id="input"
-            placeholder="Ask any AI or ML question..."
-            rows="1"
-            maxlength="3000"
-          ></textarea>
-          <button class="send-btn" id="send-btn" onclick="sendMessage()">
-            <svg viewBox="0 0 24 24">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-          </button>
+          <div id="chat-attachment-preview" style="display: none; align-items: center; background: rgba(5, 150, 105, 0.1); border: 1px solid rgba(5, 150, 105, 0.3); padding: 6px 12px; border-radius: 8px; margin-bottom: 8px; font-size: 13px; color: var(--text); width: fit-content;">
+            <span style="margin-right: 8px;">📄</span>
+            <span id="chat-attachment-name" style="margin-right: 12px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
+            <button onclick="removeChatAttachment()" style="background: none; border: none; color: #888; cursor: pointer; padding: 0; font-size: 14px;">✕</button>
+          </div>
+          <div style="display: flex; align-items: flex-end; gap: 8px; width: 100%;">
+            <button class="clear-btn" onclick="startNewChat()">New chat</button>
+            <div style="position: relative; flex-grow: 1; display: flex; align-items: center;">
+              <button onclick="document.getElementById('chat-file-input').click()" style="position: absolute; left: 10px; bottom: 8px; background: none; border: none; cursor: pointer; font-size: 18px; color: #888; padding: 4px; z-index: 10;" title="Attach Document">📎</button>
+              <input type="file" id="chat-file-input" style="display: none;" accept=".pdf,.txt,.py,.js,.html,.css,.json,.csv,.md,.docx,.xlsx,.ipynb,.java,.cpp,.c" onchange="handleChatAttachment(this)">
+              <textarea
+                id="input"
+                placeholder="Ask any AI or ML question... (or attach a document)"
+                rows="1"
+                maxlength="3000"
+                style="padding-left: 40px;"
+              ></textarea>
+            </div>
+            <button class="send-btn" id="send-btn" onclick="sendMessage()">
+              <svg viewBox="0 0 24 24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
-    <div class="upload-panel" id="upload-panel">
-  <div class="upload-box">
-    <div class="upload-header">
-      <div>
-        <h3>Document Uploader</h3>
-        <p>Upload any file — get a summary and ask questions</p>
-      </div>
-      <button class="upload-close" onclick="closeUploader()">✕</button>
-    </div>
-    <div class="upload-body">
-      <div class="drop-zone" id="drop-zone">
-        <div class="drop-icon">📂</div>
-        <div class="drop-title">Drop your file here or click to browse</div>
-        <div class="drop-sub">PDF, Python, Jupyter, Excel, CSV, Word, text files</div>
-        <div class="drop-types">Max size: 10MB</div>
-        <input type="file" id="file-input" style="display:none"
-               accept=".pdf,.txt,.py,.js,.html,.css,.json,.csv,.md,.docx,.xlsx,.ipynb,.java,.cpp,.c"/>
-      </div>
-
-      <div class="upload-file-info" id="upload-file-info">
-        <span class="file-icon" id="file-icon-display">📄</span>
-        <div class="file-details">
-          <div class="file-name" id="file-name-display"></div>
-          <div class="file-size" id="file-size-display"></div>
-        </div>
-        <button class="file-remove" onclick="removeFile()">✕</button>
-      </div>
-
-      <button class="upload-submit-btn" id="upload-submit-btn"
-              onclick="submitUpload()">📤 Upload & Analyze</button>
-
-      <div class="upload-summary" id="upload-summary">
-        <div class="doc-qa-label">Document Summary</div>
-        <div class="summary-content" id="summary-content"></div>
-      </div>
-
-      <div class="doc-qa-section" id="doc-qa-section">
-        <div class="doc-qa-label" style="margin-top:16px;">Ask about this document</div>
-        <div class="suggested-questions" id="suggested-questions"></div>
-        <div class="doc-qa-input-row" style="margin-top:10px;">
-          <input type="text" class="doc-qa-input" id="doc-qa-input"
-                 placeholder="Ask anything about this document..."
-                 onkeydown="if(event.key==='Enter') askAboutDocument()"/>
-          <button class="doc-qa-btn" id="doc-qa-btn"
-                  onclick="askAboutDocument()">Ask</button>
-        </div>
-        <div class="doc-qa-answer" id="doc-qa-answer"></div>
-      </div>
-    </div>
-  </div>
 
 <div class="compare-panel modal-overlay" id="compare-panel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
   <div style="background: var(--bg); border: 1px solid var(--border); padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
@@ -796,6 +757,6 @@ print(numbers[10])"
     <script src="/static/js/debugger.js"></script>
     <script src="/static/js/quiz.js"></script>
     <script src="/static/js/roadmap.js"></script>
-    <script src="/static/js/uploader.js"></script>
+
   </body>
 </html>

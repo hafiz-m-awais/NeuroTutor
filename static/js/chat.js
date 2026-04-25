@@ -1,5 +1,6 @@
 let conversationHistory = [];
 let isStreaming = false;
+let hasActiveDocument = false;
 
 const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
@@ -98,12 +99,14 @@ async function sendMessage() {
   addTyping();
 
   try {
-    const res = await fetch('/ask', {
+    const endpoint = hasActiveDocument ? '/ask-document' : '/ask';
+
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: JSON.stringify({ 
         question,
-        history: conversationHistory.slice(-Config.MAX_HISTORY)
+        history: hasActiveDocument ? [] : conversationHistory.slice(-Config.MAX_HISTORY * 2)
       })
     });
 
@@ -156,4 +159,58 @@ async function sendMessage() {
     sendBtn.disabled = false;
     inputEl.focus();
   }
+}
+
+async function handleChatAttachment(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    alert('File is too large. Max size is 10MB.');
+    input.value = '';
+    return;
+  }
+
+  // Show UI preview
+  document.getElementById('chat-attachment-name').textContent = file.name;
+  document.getElementById('chat-attachment-preview').style.display = 'flex';
+  hasActiveDocument = true;
+
+  // Auto-upload the file
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const bubble = addMessage('bot', '');
+  bubble.innerHTML = '<span class="output-loading">Uploading and analyzing document...</span>';
+  scrollBottom();
+
+  try {
+    const res = await fetch('/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Upload failed');
+    }
+
+    const data = await res.json();
+    const mdSummary = `📄 **Document Uploaded:** \`${data.filename}\`\n\n**Summary:**\n${data.summary}\n\n*You can now ask me questions about this document!*`;
+    
+    bubble.innerHTML = formatText(mdSummary);
+    conversationHistory.push({ role: 'assistant', content: mdSummary });
+    saveCurrentChat(conversationHistory);
+
+  } catch (err) {
+    bubble.innerHTML = `Error: ${err.message}`;
+    removeChatAttachment();
+  }
+}
+
+function removeChatAttachment() {
+  const input = document.getElementById('chat-file-input');
+  input.value = '';
+  document.getElementById('chat-attachment-preview').style.display = 'none';
+  hasActiveDocument = false;
 }
