@@ -207,7 +207,7 @@ Document name: {filename}
 Document content:
 {content[:8000]}
 
-Provide a clear summary in this format:
+Provide a clear and educational summary in this format:
 
 📄 DOCUMENT SUMMARY
 [2-3 sentence overview of what this document is about]
@@ -216,12 +216,15 @@ Provide a clear summary in this format:
 [5-7 most important points as bullet points]
 
 💡 MAIN CONCEPTS
-[List the main technical concepts covered]
+[List the main technical concepts covered with 1-sentence explanations]
 
 ❓ SUGGESTED QUESTIONS
-[3 questions the student might want to ask about this document]
+[3 specific questions the student might want to ask about this document to learn more]
 
-Keep it concise and student-friendly."""
+🚀 QUICK ACTION (Roman Urdu)
+[One encouraging sentence in Roman Urdu about what the student should do next with this info]
+
+Keep it concise, encouraging, and student-friendly. Use formatting (bolding) to highlight important terms."""
 
 def get_document_qa_prompt(docs: list, question: str) -> str:
     prompt = "You are helping a Pakistani CS student understand the provided documents.\n\n"
