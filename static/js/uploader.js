@@ -1,5 +1,4 @@
 let uploadedFile = null;
-let sessionId = 'session_' + Date.now();
 let documentContent = null;
 
 function openUploader() {
@@ -90,7 +89,6 @@ async function submitUpload() {
 
     const res = await fetch('/upload', {
       method: 'POST',
-      headers: { 'X-Session-Id': sessionId },
       body: formData
     });
 
@@ -172,7 +170,7 @@ async function askAboutDocument(question) {
     const res = await fetch('/ask-document', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, session_id: sessionId })
+      body: JSON.stringify({ question })
     });
 
     if (!res.ok) {

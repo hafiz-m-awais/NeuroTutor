@@ -1,10 +1,12 @@
-openai
-dotenv
-flask
-flask-limiter
-python-dotenv
-google-genai
-gunicorn
-PyPDF2
-python-docx
-openpyxl
+# NeuroTutor dependencies — pinned to tested versions
+flask==3.0.3
+flask-limiter==3.8.0
+google-genai==0.3.0
+gunicorn==22.0.0
+openai==2.31.0
+PyPDF2==3.0.1
+python-docx==1.2.0
+python-dotenv==1.0.1
+Werkzeug==3.1.8
+openpyxl>=3.1.0
+cachetools>=5.3.0

@@ -49,6 +49,22 @@ function copyCode(btn) {
   });
 }
 
+const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js';
+let _pyodideScriptLoading = null;
+
+function loadPyodideScript() {
+  if (window.loadPyodide) return Promise.resolve();
+  if (_pyodideScriptLoading) return _pyodideScriptLoading;
+  _pyodideScriptLoading = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = PYODIDE_CDN;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Failed to load Pyodide script'));
+    document.head.appendChild(script);
+  });
+  return _pyodideScriptLoading;
+}
+
 async function runCode(btn) {
   const wrapper = btn.closest('.code-block-wrapper');
   const pre = wrapper.querySelector('pre');
@@ -63,6 +79,7 @@ async function runCode(btn) {
   try {
     if (!window.pyodide) {
       output.innerHTML = '<span class="output-loading">First time setup — loading Pyodide (10-15 seconds)...</span>';
+      await loadPyodideScript();
       window.pyodide = await loadPyodide();
     }
 

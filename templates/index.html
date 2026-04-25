@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/static/css/main.css" />
     <link rel="stylesheet" href="/static/css/chat.css" />
     <link rel="stylesheet" href="/static/css/dark.css" />
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
       .dark-toggle {
@@ -435,7 +435,7 @@
             id="input"
             placeholder="Ask any AI or ML question..."
             rows="1"
-            maxlength="500"
+            maxlength="3000"
           ></textarea>
           <button class="send-btn" id="send-btn" onclick="sendMessage()">
             <svg viewBox="0 0 24 24">
@@ -567,7 +567,7 @@
           </div>
         </div>
         <div class="roadmap-footer">
-          <select id="roadmap-format-select" class="filter-select" style="margin-right: 10px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: white;">
+          <select id="roadmap-format-select" class="roadmap-form-select">
             <option value="txt">Text (.txt)</option>
             <option value="md">Markdown (.md)</option>
             <option value="json">JSON (.json)</option>

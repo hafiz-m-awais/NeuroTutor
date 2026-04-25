@@ -70,7 +70,7 @@ function loadChat(chatId) {
     const div = document.createElement('div');
     div.className = `msg ${isUser ? 'user' : 'bot'}`;
     div.innerHTML = `
-      <div class="msg-avatar">${isUser ? 'U' : 'A'}</div>
+      <div class="msg-avatar">${isUser ? 'U' : 'N'}</div>
       <div class="bubble">${isUser ? escapeHtml(msg.content) : formatText(msg.content)}</div>
     `;
     chatEl.appendChild(div);
@@ -90,6 +90,7 @@ function loadChat(chatId) {
 
 function deleteChat(chatId, event) {
   event.stopPropagation();
+  if (!confirm('Delete this chat? This cannot be undone.')) return;
 
   const chats = getAllChats().filter(c => c.id !== chatId);
   saveAllChats(chats);

@@ -11,7 +11,8 @@ class Config:
     GEMINI_MODEL = os.getenv('GEMINI_MODEL', "gemini-2.0-flash-lite")
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
     OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
-    MAX_INPUT_LENGTH = 500
+    SECRET_KEY = os.getenv('SECRET_KEY', os.urandom(32).hex())
+    MAX_INPUT_LENGTH = 3000
     MIN_INPUT_LENGTH = 3
     MAX_OUTPUT_TOKENS = 1024
     TEMPERATURE = 0.7
@@ -19,6 +20,11 @@ class Config:
     RATE_LIMIT_PER_MINUTE = "15 per minute"
     RATE_LIMIT_PER_HOUR = "20 per hour"
     RATE_LIMIT_PER_DAY = "200 per day"
+    ALLOWED_ORIGINS = [
+        'http://localhost:7860',
+        'http://127.0.0.1:7860',
+        'https://awaisriaz-neurotutor.hf.space',
+    ]
     GEMINI_API_KEYS = []
 
     @classmethod

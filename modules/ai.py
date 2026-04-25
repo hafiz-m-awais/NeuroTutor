@@ -78,7 +78,8 @@ def initialize_keys():
     if Config.GROQ_API_KEY:
         groq_client = OpenAI(
             api_key=Config.GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1"
+            base_url="https://api.groq.com/openai/v1",
+            timeout=30.0
         )
         log.info("Groq client ready")
     else:
@@ -87,7 +88,8 @@ def initialize_keys():
     if Config.OPENROUTER_API_KEY:
         openrouter_client = OpenAI(
             api_key=Config.OPENROUTER_API_KEY,
-            base_url="https://openrouter.ai/api/v1"
+            base_url="https://openrouter.ai/api/v1",
+            timeout=30.0
         )
         log.info("OpenRouter client ready")
     else:
@@ -215,10 +217,15 @@ def stream_with_fallbacks(prompt: str, max_tokens: int = 1024, temperature: floa
     yield "data: [DONE]\n\n"
 
 def generate_with_fallback(prompt: str, max_tokens: int = 1024):
-    # 1 — Try Gemini
+    # 1 — Try all Gemini keys in rotation
     if not rotator.all_on_cooldown():
-        client, idx = rotator.get_client()
-        if client:
+        max_attempts = len(Config.GEMINI_API_KEYS)
+        for attempt in range(max_attempts):
+            if rotator.all_on_cooldown():
+                break
+            client, idx = rotator.get_client()
+            if client is None:
+                break
             try:
                 response = client.models.generate_content(
                     model=Config.GEMINI_MODEL,
@@ -234,8 +241,11 @@ def generate_with_fallback(prompt: str, max_tokens: int = 1024):
             except Exception as e:
                 if is_quota_error(e):
                     rotator.mark_exceeded(idx)
+                    log.warning(f"Gemini key {idx+1} quota hit during generate, trying next key")
+                    continue
                 else:
                     log.error(f"Gemini generate error: {e}")
+                    break
 
     # 2 — Try Groq
     if groq_client:

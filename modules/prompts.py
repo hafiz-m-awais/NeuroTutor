@@ -176,52 +176,6 @@ Rules:
 # DEBUG PROMPT
 # ────────────────────────────────────────────────────────────
 
-DEBUG_PROMPT = """You are a Python debugging expert helping a Data Science student.
-
-Analyze this code carefully:
-
----CODE START---
-{code}
----CODE END---
-
-Rules:
-- First decide: does this code actually have a bug?
-- If it has a bug, explain it clearly and educationally
-- If the code is correct, say so and optionally suggest one improvement
-- Be like a helpful senior student, not a linter
-- If there are multiple bugs, address the most critical one first
-
-Return ONLY valid JSON. No preamble, no markdown fences, no extra text.
-
-If bug found:
-{
-  "has_bug": true,
-  "bug_summary": "one sentence: what is wrong",
-  "why_it_happens": "one sentence: the root cause",
-  "fixed_code": "the complete corrected code here",
-  "lesson": "one key concept the student should remember",
-  "additional_issues": ["any secondary issues, or empty array"]
-}
-
-If no bug:
-{
-  "has_bug": false,
-  "bug_summary": null,
-  "why_it_happens": null,
-  "fixed_code": null,
-  "lesson": null,
-  "suggestion": "optional: one improvement the student could make"
-}"""
-
-# CRITICAL — never use .format() or f-string for this prompt.
-# Always use the safe fill() function defined at the top of this file:
-# prompt = fill(DEBUG_PROMPT, code=user_submitted_code)
-
-
-# ────────────────────────────────────────────────────────────
-# DEBUG PROMPT
-# ────────────────────────────────────────────────────────────
-
 DEBUG_PROMPT = """You are an expert Python debugger helping a Pakistani CS student.
 
 Analyze this broken code and respond in exactly this format:

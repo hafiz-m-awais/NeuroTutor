@@ -1,12 +1,13 @@
+import json
 import logging
 from datetime import datetime
-from flask import Flask, json, request, jsonify, render_template, Response, stream_with_context
+from cachetools import TTLCache
+from flask import Flask, request, jsonify, render_template, Response, stream_with_context, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from config import Config
 from modules.validators import validate_request
 from werkzeug.utils import secure_filename
-import json as json_module
 from modules.ai import build_prompt, stream_response, stream_debug, generate_quiz, initialize_keys
 logging.basicConfig(
     level=logging.INFO,
@@ -19,6 +20,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 app = Flask(__name__)
+app.secret_key = Config.SECRET_KEY
 initialize_keys()
 log.info(f"Total API keys loaded: {len(Config.GEMINI_API_KEYS)}")
 
@@ -34,6 +36,17 @@ limiter = Limiter(
 def home():
     log.info("Home accessed")
     return render_template('index.html')
+
+
+@app.before_request
+def csrf_origin_check():
+    if request.method == 'POST':
+        origin = request.headers.get('Origin') or request.headers.get('Referer', '')
+        if origin:
+            allowed = any(origin.startswith(o) for o in Config.ALLOWED_ORIGINS)
+            if not allowed:
+                log.warning(f"CSRF blocked — Origin: {origin}")
+                return jsonify({'error': 'Forbidden'}), 403
 
 
 @app.route('/ask', methods=['POST'])
@@ -157,7 +170,8 @@ def roadmap():
     except Exception as e:
         log.error(f"Roadmap error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
-document_store = {}
+# TTLCache: max 500 sessions, each expires after 30 minutes of inactivity
+document_store = TTLCache(maxsize=500, ttl=1800)
 
 @app.route('/upload', methods=['POST'])
 @limiter.limit("10 per minute")
@@ -188,7 +202,11 @@ def upload():
         if not content:
             return jsonify({'error': 'Could not extract text from this file.'}), 400
 
-        session_id = request.headers.get('X-Session-Id', 'default')
+        session_id = session.get('session_id')
+        if not session_id:
+            import uuid
+            session_id = str(uuid.uuid4())
+            session['session_id'] = session_id
         document_store[session_id] = {
             'filename': filename,
             'content': content,
@@ -222,7 +240,7 @@ def ask_document():
     try:
         data = request.get_json()
         question = data.get('question', '').strip()
-        session_id = data.get('session_id', 'default')
+        session_id = session.get('session_id', 'default')
 
         if not question:
             return jsonify({'error': 'Please ask a question'}), 400

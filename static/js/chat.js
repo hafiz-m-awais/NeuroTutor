@@ -34,7 +34,7 @@ function addMessage(role, text) {
   const div = document.createElement('div');
   div.className = `msg ${isUser ? 'user' : 'bot'}`;
   div.innerHTML = `
-    <div class="msg-avatar">${isUser ? 'U' : 'A'}</div>
+    <div class="msg-avatar">${isUser ? 'U' : 'N'}</div>
     <div class="bubble">${isUser ? escapeHtml(text) : ''}</div>
   `;
   chatEl.appendChild(div);
@@ -49,7 +49,7 @@ function addTyping() {
   div.className = 'msg bot';
   div.id = 'typing-indicator';
   div.innerHTML = `
-    <div class="msg-avatar">A</div>
+    <div class="msg-avatar">N</div>
     <div class="bubble">
       <div class="typing"><span></span><span></span><span></span></div>
     </div>`;
@@ -70,25 +70,17 @@ function escapeHtml(text) {
   return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// Configure marked once for the whole app
+if (typeof marked !== 'undefined') {
+  marked.setOptions({ breaks: true, gfm: true });
+}
+
 function formatText(text) {
-  text = text.replace(/```(\w+)?\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  text = text.replace(/^### (.*)/gm, '<h3>$1</h3>');
-  text = text.replace(/^## (.*)/gm, '<h3>$1</h3>');
-  text = text.replace(/^\* (.*)/gm, '<li>$1</li>');
-  text = text.replace(/^- (.*)/gm, '<li>$1</li>');
-  text = text.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
-  text = text.replace(/\n\n/g, '</p><p>');
-  text = '<p>' + text + '</p>';
-  text = text.replace(/<p><\/p>/g, '');
-  text = text.replace(/<p>(<pre>)/g, '$1');
-  text = text.replace(/<\/pre><\/p>/g, '</pre>');
-  text = text.replace(/<p>(<h3>)/g, '$1');
-  text = text.replace(/<\/h3><\/p>/g, '</h3>');
-  text = text.replace(/<p>(<ul>)/g, '$1');
-  text = text.replace(/<\/ul><\/p>/g, '</ul>');
-  return text;
+  if (typeof marked !== 'undefined') {
+    return marked.parse(text);
+  }
+  // Minimal fallback if CDN fails to load
+  return '<p>' + text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>') + '</p>';
 }
 
 async function sendMessage() {
