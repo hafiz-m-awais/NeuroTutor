@@ -270,21 +270,27 @@ def ask_document():
     try:
         data = request.get_json()
         question = data.get('question', '').strip()
-        document_id = data.get('document_id')
+        document_ids = data.get('document_ids', [])
 
         if not question:
             return jsonify({'error': 'Please ask a question'}), 400
 
-        if not document_id:
-            return jsonify({'error': 'No active document ID provided. Please upload again.'}), 400
+        if not document_ids or not isinstance(document_ids, list):
+            return jsonify({'error': 'No active document IDs provided. Please upload again.'}), 400
 
-        doc = document_store.get(document_id)
-        if not doc:
-            return jsonify({'error': 'No document found or session expired. Please upload a file first.'}), 400
+        docs = []
+        for doc_id in document_ids:
+            doc = document_store.get(doc_id)
+            if doc:
+                docs.append(doc)
+
+        if not docs:
+            return jsonify({'error': 'No documents found or session expired. Please upload a file first.'}), 400
 
         from modules.prompts import get_document_qa_prompt
         from modules.ai import stream_with_fallbacks
-        prompt = get_document_qa_prompt(doc['filename'], doc['content'], question)
+        
+        prompt = get_document_qa_prompt(docs, question)
 
         return Response(
             stream_with_context(stream_with_fallbacks(prompt)),

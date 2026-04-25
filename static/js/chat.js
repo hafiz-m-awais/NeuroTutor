@@ -1,7 +1,6 @@
 let conversationHistory = [];
 let isStreaming = false;
-let hasActiveDocument = false;
-let activeDocumentId = null;
+let activeDocuments = []; // Array of { id, name }
 
 const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
@@ -100,15 +99,16 @@ async function sendMessage() {
   addTyping();
 
   try {
-    const endpoint = hasActiveDocument ? '/ask-document' : '/ask';
+    const isDocQa = activeDocuments.length > 0;
+    const endpoint = isDocQa ? '/ask-document' : '/ask';
 
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         question,
-        document_id: activeDocumentId,
-        history: hasActiveDocument ? [] : conversationHistory.slice(-Config.MAX_HISTORY * 2)
+        document_ids: activeDocuments.map(d => d.id),
+        history: isDocQa ? [] : conversationHistory.slice(-Config.MAX_HISTORY * 2)
       })
     });
 
@@ -173,12 +173,6 @@ async function handleChatAttachment(input) {
     return;
   }
 
-  // Show UI preview
-  document.getElementById('chat-attachment-name').textContent = file.name;
-  document.getElementById('chat-attachment-preview').style.display = 'flex';
-  hasActiveDocument = true;
-
-  // Auto-upload the file
   const formData = new FormData();
   formData.append('file', file);
 
@@ -198,8 +192,12 @@ async function handleChatAttachment(input) {
     }
 
     const data = await res.json();
-    activeDocumentId = data.document_id;
-    const mdSummary = `📄 **Document Uploaded:** \`${data.filename}\`\n\n**Summary:**\n${data.summary}\n\n*You can now ask me questions about this document!*`;
+    
+    // Add to active documents state
+    activeDocuments.push({ id: data.document_id, name: data.filename });
+    renderDocumentChips();
+
+    const mdSummary = `📄 **Document Uploaded:** \`${data.filename}\`\n\n**Summary:**\n${data.summary}\n\n*You can now ask me questions about this document (or upload another to compare)!*`;
     
     bubble.innerHTML = formatText(mdSummary);
     conversationHistory.push({ role: 'assistant', content: mdSummary });
@@ -207,14 +205,29 @@ async function handleChatAttachment(input) {
 
   } catch (err) {
     bubble.innerHTML = `Error: ${err.message}`;
-    removeChatAttachment();
+    input.value = '';
   }
 }
 
-function removeChatAttachment() {
-  const input = document.getElementById('chat-file-input');
-  input.value = '';
-  document.getElementById('chat-attachment-preview').style.display = 'none';
-  hasActiveDocument = false;
-  activeDocumentId = null;
+function renderDocumentChips() {
+  const container = document.getElementById('chat-attachment-container');
+  container.innerHTML = '';
+  
+  activeDocuments.forEach(doc => {
+    const chip = document.createElement('div');
+    chip.style = "display: flex; align-items: center; background: rgba(5, 150, 105, 0.1); border: 1px solid rgba(5, 150, 105, 0.3); padding: 6px 12px; border-radius: 8px; font-size: 13px; color: var(--text); width: fit-content;";
+    chip.innerHTML = `
+      <span style="margin-right: 8px;">📄</span>
+      <span style="margin-right: 12px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${doc.name}</span>
+      <button onclick="removeChatAttachment('${doc.id}')" style="background: none; border: none; color: #888; cursor: pointer; padding: 0; font-size: 14px;">✕</button>
+    `;
+    container.appendChild(chip);
+  });
+}
+
+function removeChatAttachment(docId) {
+  activeDocuments = activeDocuments.filter(d => d.id !== docId);
+  renderDocumentChips();
+  // Clear the input so the same file can be uploaded again if needed
+  document.getElementById('chat-file-input').value = '';
 }

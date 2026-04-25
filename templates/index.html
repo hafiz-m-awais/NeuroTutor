@@ -430,11 +430,7 @@
         </div>
 
         <div class="input-area">
-          <div id="chat-attachment-preview" style="display: none; align-items: center; background: rgba(5, 150, 105, 0.1); border: 1px solid rgba(5, 150, 105, 0.3); padding: 6px 12px; border-radius: 8px; margin-bottom: 8px; font-size: 13px; color: var(--text); width: fit-content;">
-            <span style="margin-right: 8px;">📄</span>
-            <span id="chat-attachment-name" style="margin-right: 12px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
-            <button onclick="removeChatAttachment()" style="background: none; border: none; color: #888; cursor: pointer; padding: 0; font-size: 14px;">✕</button>
-          </div>
+          <div id="chat-attachment-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;"></div>
           <div style="display: flex; align-items: flex-end; gap: 8px; width: 100%;">
             <button class="clear-btn" onclick="startNewChat()">New chat</button>
             <div style="position: relative; flex-grow: 1; display: flex; align-items: center;">

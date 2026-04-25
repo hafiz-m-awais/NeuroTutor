@@ -223,16 +223,19 @@ Provide a clear summary in this format:
 
 Keep it concise and student-friendly."""
 
-def get_document_qa_prompt(filename: str, content: str, question: str) -> str:
-    return f"""You are helping a Pakistani CS student understand a document.
-
-Document: {filename}
-Content: {content[:8000]}
-
-Student question: {question}
-
-Answer based on the document content. If the answer is not in the document, say so clearly.
-Keep the answer concise and educational."""
+def get_document_qa_prompt(docs: list, question: str) -> str:
+    prompt = "You are helping a Pakistani CS student understand the provided documents.\n\n"
+    
+    # Partition the 8000 character limit evenly among all documents
+    chars_per_doc = 8000 // max(1, len(docs))
+    
+    for i, doc in enumerate(docs):
+        prompt += f"--- Document {i+1}: {doc['filename']} ---\n"
+        prompt += f"{doc['content'][:chars_per_doc]}\n\n"
+        
+    prompt += f"Student question: {question}\n\n"
+    prompt += "Answer based on the document contents. If the answer requires comparing documents, do so clearly. If the answer is not in the documents, say so clearly.\nKeep the answer concise and educational."
+    return prompt
 # ────────────────────────────────────────────────────────────
 # CONCEPT COMPARISON PROMPT
 # ────────────────────────────────────────────────────────────
