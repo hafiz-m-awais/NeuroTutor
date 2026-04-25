@@ -21,6 +21,10 @@ log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = Config.SECRET_KEY
+app.config.update(
+    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SECURE=True,
+)
 initialize_keys()
 log.info(f"Total API keys loaded: {len(Config.GEMINI_API_KEYS)}")
 
