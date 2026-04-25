@@ -512,18 +512,27 @@ async function submitCompare() {
     const data = await res.json();
     
     // Format JSON response into markdown
-    let md = `### ⚖️ ${data.concept_a} vs ${data.concept_b}\n\n`;
-    md += `**${data.concept_a}**: ${data.summary_a}\n\n`;
-    md += `**${data.concept_b}**: ${data.summary_b}\n\n`;
+    // Using keys from CONCEPT_COMPARE_PROMPT in prompts.py
+    const cA = data.concept_a || a;
+    const cB = data.concept_b || b;
     
-    md += `#### Key Differences\n`;
-    data.differences.forEach(d => {
-      md += `- **${d.aspect}**: ${d.concept_a_side} vs ${d.concept_b_side}\n`;
-    });
+    let md = `### ⚖️ ${cA} vs ${cB}\n\n`;
+    md += `**${cA}**: ${data.one_line_a || data.summary_a || ''}\n\n`;
+    md += `**${cB}**: ${data.one_line_b || data.summary_b || ''}\n\n`;
+    
+    const diffs = data.key_differences || data.differences || [];
+    if (diffs.length > 0) {
+      md += `#### Key Differences\n`;
+      diffs.forEach(d => {
+        const aSide = d.concept_a || d.concept_a_side || '';
+        const bSide = d.concept_b || d.concept_b_side || '';
+        md += `- **${d.aspect || 'Difference'}**: ${aSide} vs ${bSide}\n`;
+      });
+    }
     
     md += `\n#### When to use which?\n`;
-    md += `- **Use ${data.concept_a} when**: ${data.when_to_use_a}\n`;
-    md += `- **Use ${data.concept_b} when**: ${data.when_to_use_b}\n`;
+    md += `- **Use ${cA} when**: ${data.use_a_when || data.when_to_use_a || 'it fits your use case.'}\n`;
+    md += `- **Use ${cB} when**: ${data.use_b_when || data.when_to_use_b || 'it fits your use case.'}\n`;
     
     if (data.analogy) {
       md += `\n💡 **Analogy**: ${data.analogy}\n`;
