@@ -13,13 +13,17 @@ QUOTA_FINAL = "⏳ All AI providers are busy. Please wait 1 minute and try again
 GENERAL_ERROR = "Something went wrong. Please try again."
 
 OPENROUTER_MODELS = [ 
+    "google/gemma-4-26b-a4b-it:free",
+    "google/gemma-4-31b-it:free",
+    "qwen/qwen3-next-80b-a3b-instruct:free",
+    "z-ai/glm-4.5-air:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "liquid/lfm-2.5-1.2b-thinking:free",
     "qwen/qwen-2.5-72b-instruct:free",
     "meta-llama/llama-3.3-70b-instruct:free",
     "google/gemma-2-9b-it:free",
     "mistralai/mistral-7b-instruct:free",
-    "deepseek/deepseek-chat:free",
-    "microsoft/phi-3-medium-128k-instruct:free",
-    "openchat/openchat-7b:free"
+    "deepseek/deepseek-chat:free"
 ]
 
 _or_index = 0
