@@ -1,6 +1,7 @@
 let conversationHistory = [];
 let isStreaming = false;
 let hasActiveDocument = false;
+let activeDocumentId = null;
 
 const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
@@ -106,6 +107,7 @@ async function sendMessage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         question,
+        document_id: activeDocumentId,
         history: hasActiveDocument ? [] : conversationHistory.slice(-Config.MAX_HISTORY * 2)
       })
     });
@@ -196,6 +198,7 @@ async function handleChatAttachment(input) {
     }
 
     const data = await res.json();
+    activeDocumentId = data.document_id;
     const mdSummary = `📄 **Document Uploaded:** \`${data.filename}\`\n\n**Summary:**\n${data.summary}\n\n*You can now ask me questions about this document!*`;
     
     bubble.innerHTML = formatText(mdSummary);
@@ -213,4 +216,5 @@ function removeChatAttachment() {
   input.value = '';
   document.getElementById('chat-attachment-preview').style.display = 'none';
   hasActiveDocument = false;
+  activeDocumentId = null;
 }

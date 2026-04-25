@@ -234,12 +234,9 @@ def upload():
         if not content:
             return jsonify({'error': 'Could not extract text from this file.'}), 400
 
-        session_id = session.get('session_id')
-        if not session_id:
-            import uuid
-            session_id = str(uuid.uuid4())
-            session['session_id'] = session_id
-        document_store[session_id] = {
+        import uuid
+        document_id = str(uuid.uuid4())
+        document_store[document_id] = {
             'filename': filename,
             'content': content,
             'type': file_type
@@ -259,7 +256,8 @@ def upload():
             'filename': filename,
             'type': file_type,
             'size': len(content),
-            'summary': summary_data
+            'summary': summary_data,
+            'document_id': document_id
         })
 
     except Exception as e:
@@ -272,14 +270,17 @@ def ask_document():
     try:
         data = request.get_json()
         question = data.get('question', '').strip()
-        session_id = session.get('session_id', 'default')
+        document_id = data.get('document_id')
 
         if not question:
             return jsonify({'error': 'Please ask a question'}), 400
 
-        doc = document_store.get(session_id)
+        if not document_id:
+            return jsonify({'error': 'No active document ID provided. Please upload again.'}), 400
+
+        doc = document_store.get(document_id)
         if not doc:
-            return jsonify({'error': 'No document found. Please upload a file first.'}), 400
+            return jsonify({'error': 'No document found or session expired. Please upload a file first.'}), 400
 
         from modules.prompts import get_document_qa_prompt
         from modules.ai import stream_with_fallbacks
