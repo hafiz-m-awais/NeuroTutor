@@ -13,13 +13,13 @@ QUOTA_FINAL = "⏳ All AI providers are busy. Please wait 1 minute and try again
 GENERAL_ERROR = "Something went wrong. Please try again."
 
 OPENROUTER_MODELS = [ 
-    "qwen/qwen3-235b-a22b:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
     "qwen/qwen-2.5-72b-instruct:free",
-    "google/gemma-3-12b-it:free",
-    "deepseek/deepseek-r1-distill-qwen-32b:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "google/gemma-2-9b-it:free",
     "mistralai/mistral-7b-instruct:free",
-    "deepseek/deepseek-chat-v3-0324:free"
+    "deepseek/deepseek-chat:free",
+    "microsoft/phi-3-medium-128k-instruct:free",
+    "openchat/openchat-7b:free"
 ]
 
 _or_index = 0
@@ -151,7 +151,11 @@ def try_openrouter_stream(prompt: str, max_tokens: int = 1024, temperature: floa
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=max_tokens,
                 temperature=temperature,
-                stream=True
+                stream=True,
+                extra_headers={
+                    "HTTP-Referer": "https://neurotutor.com", # Optional
+                    "X-Title": "NeuroTutor",                 # Optional
+                }
             )
             return True, stream
         except Exception as e:
@@ -197,8 +201,8 @@ def stream_with_fallbacks(prompt: str, max_tokens: int = 1024, temperature: floa
                     rotator.mark_exceeded(idx)
                     continue
                 else:
-                    log.error(f"Gemini error: {e}")
-                    break
+                    log.error(f"Gemini error (Key {idx+1}): {e}")
+                    continue
 
     # 2 — Try Groq
     ok, stream = try_groq_stream(prompt, max_tokens, temperature)
@@ -246,8 +250,8 @@ def generate_with_fallback(prompt: str, max_tokens: int = 1024, is_json: bool = 
                     log.warning(f"Gemini key {idx+1} quota hit during generate, trying next key")
                     continue
                 else:
-                    log.error(f"Gemini generate error: {e}")
-                    break
+                    log.error(f"Gemini generate error (Key {idx+1}): {e}")
+                    continue
 
     # 2 — Try Groq
     if groq_client:
