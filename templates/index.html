@@ -348,12 +348,19 @@
     </div>
 
     <div class="app-layout">
-      <div class="sidebar" id="sidebar">
+      <div class="sidebar" id="sidebar" style="display: flex; flex-direction: column;">
         <div class="sidebar-header">
           <span class="sidebar-title">Chat history</span>
           <button class="new-chat-btn" onclick="startNewChat()">+ New</button>
         </div>
-        <div class="chat-list" id="chat-list"></div>
+        <div class="chat-list" id="chat-list" style="flex: 1; overflow-y: auto;"></div>
+        
+        <div class="sidebar-header" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 10px;">
+          <span class="sidebar-title">📚 Knowledge Base</span>
+        </div>
+        <div id="knowledge-base-list" style="padding: 0 12px 12px 12px; display: flex; flex-direction: column; gap: 8px;">
+           <div id="kb-empty-state" style="font-size: 12px; color: #888; text-align: center; font-style: italic; padding: 10px 0;">No active documents</div>
+        </div>
       </div>
 
       <div class="main-content">
@@ -430,7 +437,6 @@
         </div>
 
         <div class="input-area">
-          <div id="chat-attachment-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;"></div>
           <div style="display: flex; align-items: flex-end; gap: 8px; width: 100%;">
             <button class="clear-btn" onclick="startNewChat()">New chat</button>
             <div style="position: relative; flex-grow: 1; display: flex; align-items: center;">

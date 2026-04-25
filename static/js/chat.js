@@ -210,19 +210,35 @@ async function handleChatAttachment(input) {
 }
 
 function renderDocumentChips() {
-  const container = document.getElementById('chat-attachment-container');
-  container.innerHTML = '';
+  const container = document.getElementById('knowledge-base-list');
+  const emptyState = document.getElementById('kb-empty-state');
   
-  activeDocuments.forEach(doc => {
-    const chip = document.createElement('div');
-    chip.style = "display: flex; align-items: center; background: rgba(5, 150, 105, 0.1); border: 1px solid rgba(5, 150, 105, 0.3); padding: 6px 12px; border-radius: 8px; font-size: 13px; color: var(--text); width: fit-content;";
-    chip.innerHTML = `
-      <span style="margin-right: 8px;">📄</span>
-      <span style="margin-right: 12px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${doc.name}</span>
-      <button onclick="removeChatAttachment('${doc.id}')" style="background: none; border: none; color: #888; cursor: pointer; padding: 0; font-size: 14px;">✕</button>
-    `;
-    container.appendChild(chip);
-  });
+  // Remove existing chips
+  const existingChips = container.querySelectorAll('.kb-chip');
+  existingChips.forEach(c => c.remove());
+  
+  if (activeDocuments.length === 0) {
+    if (emptyState) emptyState.style.display = 'block';
+  } else {
+    if (emptyState) emptyState.style.display = 'none';
+    
+    activeDocuments.forEach(doc => {
+      const chip = document.createElement('div');
+      chip.className = 'kb-chip';
+      chip.style = "display: flex; align-items: center; justify-content: space-between; background: rgba(5, 150, 105, 0.05); border: 1px solid rgba(5, 150, 105, 0.2); padding: 8px 12px; border-radius: 8px; font-size: 13px; color: var(--text); transition: all 0.2s;";
+      chip.onmouseover = () => chip.style.background = 'rgba(5, 150, 105, 0.15)';
+      chip.onmouseout = () => chip.style.background = 'rgba(5, 150, 105, 0.05)';
+      
+      chip.innerHTML = `
+        <div style="display: flex; align-items: center; overflow: hidden;">
+          <span style="margin-right: 8px; font-size: 16px;">📄</span>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${doc.name}">${doc.name}</span>
+        </div>
+        <button onclick="removeChatAttachment('${doc.id}')" style="background: none; border: none; color: #888; cursor: pointer; padding: 4px; margin-left: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.color='#ef4444'; this.style.background='rgba(239, 68, 68, 0.1)';" onmouseout="this.style.color='#888'; this.style.background='none';">✕</button>
+      `;
+      container.appendChild(chip);
+    });
+  }
 }
 
 function removeChatAttachment(docId) {
