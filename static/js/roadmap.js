@@ -18,6 +18,11 @@ function setRoadmapTopic(topic) {
   generateRoadmap();
 }
 
+function formatResourceLinks(text) {
+  const escaped = escapeHtml(text);
+  return escaped.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color: inherit; text-decoration: underline;">$1</a>');
+}
+
 async function generateRoadmap() {
   const topic = document.getElementById('roadmap-topic-input').value.trim();
   const days = parseInt(document.getElementById('roadmap-days').value) || 30;
@@ -94,7 +99,7 @@ function renderRoadmap(data) {
               <div class="day-topic">${escapeHtml(day.topic || '')}</div>
             </div>
             <ul class="day-tasks">${tasks}</ul>
-            ${day.resource ? `<span class="day-resource">📚 ${escapeHtml(day.resource)}</span>` : ''}
+            ${day.resource ? `<span class="day-resource">📚 ${formatResourceLinks(day.resource)}</span>` : ''}
           </div>`;
         });
       }

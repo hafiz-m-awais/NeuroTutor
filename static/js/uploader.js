@@ -1,5 +1,7 @@
 let uploadedFile = null;
 let documentContent = null;
+let lastDocQuestion = '';
+let lastDocAnswer = '';
 
 function openUploader() {
   document.getElementById('upload-panel').classList.add('open');
@@ -209,12 +211,41 @@ async function askAboutDocument(question) {
       }
     }
 
+    lastDocQuestion = question;
+    lastDocAnswer = fullText;
+
+    answerBox.innerHTML += `
+      <div style="margin-top: 15px; text-align: right;">
+        <button onclick="continueInChat()" style="background: var(--accent); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+          💬 Continue in Chat
+        </button>
+      </div>
+    `;
+
   } catch (err) {
     answerBox.textContent = 'Connection error. Please try again.';
   } finally {
     btn.disabled = false;
     btn.textContent = 'Ask';
   }
+}
+
+function continueInChat() {
+  if (!lastDocQuestion || !lastDocAnswer) return;
+  
+  // Add user question
+  conversationHistory.push({ role: 'user', content: lastDocQuestion });
+  addMessage('user', lastDocQuestion);
+  
+  // Add bot answer
+  conversationHistory.push({ role: 'assistant', content: lastDocAnswer });
+  const bubble = addMessage('bot', '');
+  bubble.innerHTML = formatText(lastDocAnswer);
+  if (typeof enhanceCodeBlocks === 'function') enhanceCodeBlocks(bubble);
+  
+  saveCurrentChat(conversationHistory);
+  closeUploader();
+  scrollBottom();
 }
 
 document.addEventListener('DOMContentLoaded', initDropZone);

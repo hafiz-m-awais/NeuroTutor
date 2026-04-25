@@ -362,6 +362,7 @@
             >🐛 Debug my code</span
           >
           <span class="quiz-btn" onclick="openQuiz()">🎯 Quiz me</span>
+          <span class="compare-btn" onclick="openCompare()" style="background: rgba(236, 72, 153, 0.1); color: #ec4899; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;">⚖️ Compare</span>
           <span class="upload-btn" onclick="openUploader()">📂 Upload</span>
           <span class="roadmap-btn" onclick="openRoadmap()">🗺️ Roadmap</span>
           <span
@@ -495,6 +496,82 @@
       </div>
     </div>
   </div>
+
+<div class="compare-panel modal-overlay" id="compare-panel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
+  <div style="background: var(--bg); border: 1px solid var(--border); padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+    <h3 style="margin: 0 0 16px 0; font-size: 18px; color: var(--text);">⚖️ Compare Concepts</h3>
+    <input type="text" id="concept-a" placeholder="e.g. List" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text);">
+    <div style="text-align: center; color: #888; margin-bottom: 12px;">VS</div>
+    <input type="text" id="concept-b" placeholder="e.g. Tuple" style="width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text);">
+    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+      <button onclick="closeCompare()" style="padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text); cursor: pointer;">Cancel</button>
+      <button onclick="submitCompare()" style="padding: 8px 16px; border: none; border-radius: 6px; background: var(--accent); color: white; cursor: pointer;">Compare</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openCompare() {
+  document.getElementById('compare-panel').style.display = 'flex';
+}
+function closeCompare() {
+  document.getElementById('compare-panel').style.display = 'none';
+  document.getElementById('concept-a').value = '';
+  document.getElementById('concept-b').value = '';
+}
+async function submitCompare() {
+  const a = document.getElementById('concept-a').value.trim();
+  const b = document.getElementById('concept-b').value.trim();
+  if (!a || !b) return alert('Please enter both concepts');
+  
+  closeCompare();
+  
+  const question = `Compare ${a} and ${b}`;
+  conversationHistory.push({ role: 'user', content: question });
+  addMessage('user', question);
+  
+  const bubble = addMessage('bot', '');
+  bubble.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+  scrollBottom();
+  
+  try {
+    const res = await fetch('/compare', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ concept_a: a, concept_b: b })
+    });
+    
+    if (!res.ok) throw new Error('Compare failed');
+    
+    const data = await res.json();
+    
+    // Format JSON response into markdown
+    let md = `### ⚖️ ${data.concept_a} vs ${data.concept_b}\n\n`;
+    md += `**${data.concept_a}**: ${data.summary_a}\n\n`;
+    md += `**${data.concept_b}**: ${data.summary_b}\n\n`;
+    
+    md += `#### Key Differences\n`;
+    data.differences.forEach(d => {
+      md += `- **${d.aspect}**: ${d.concept_a_side} vs ${d.concept_b_side}\n`;
+    });
+    
+    md += `\n#### When to use which?\n`;
+    md += `- **Use ${data.concept_a} when**: ${data.when_to_use_a}\n`;
+    md += `- **Use ${data.concept_b} when**: ${data.when_to_use_b}\n`;
+    
+    if (data.analogy) {
+      md += `\n💡 **Analogy**: ${data.analogy}\n`;
+    }
+    
+    bubble.innerHTML = formatText(md);
+    conversationHistory.push({ role: 'assistant', content: md });
+    saveCurrentChat(conversationHistory);
+    
+  } catch (err) {
+    bubble.innerHTML = 'Sorry, failed to compare these concepts.';
+  }
+}
+</script>
 </div>
     <div class="roadmap-panel" id="roadmap-panel">
       <div class="roadmap-box">

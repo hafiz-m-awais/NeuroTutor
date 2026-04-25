@@ -8,7 +8,7 @@ from flask_limiter.util import get_remote_address
 from config import Config
 from modules.validators import validate_request
 from werkzeug.utils import secure_filename
-from modules.ai import build_prompt, stream_response, stream_debug, generate_quiz, initialize_keys
+from modules.ai import build_prompt, stream_response, stream_debug, generate_quiz, generate_roadmap, generate_compare, initialize_keys
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -170,6 +170,34 @@ def roadmap():
     except Exception as e:
         log.error(f"Roadmap error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
+
+@app.route('/compare', methods=['POST'])
+@limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
+def compare():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid request'}), 400
+
+        concept_a = data.get('concept_a', '').strip()
+        concept_b = data.get('concept_b', '').strip()
+
+        if not concept_a or not concept_b:
+            return jsonify({'error': 'Please provide both concepts to compare'}), 400
+
+        log.info(f"Compare: {concept_a} vs {concept_b}")
+
+        compare_data, error = generate_compare(concept_a, concept_b)
+
+        if error:
+            return jsonify({'error': error}), 500
+
+        return jsonify(compare_data)
+
+    except Exception as e:
+        log.error(f"Compare error: {e}", exc_info=True)
+        return jsonify({'error': 'Something went wrong. Please try again.'}), 500
+
 # TTLCache: max 500 sessions, each expires after 30 minutes of inactivity
 document_store = TTLCache(maxsize=500, ttl=1800)
 

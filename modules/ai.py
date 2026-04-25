@@ -304,3 +304,8 @@ def generate_roadmap(topic: str, days: int, level: str):
     from modules.prompts import get_roadmap_prompt
     prompt = get_roadmap_prompt(topic, days, level)
     return generate_with_fallback(prompt, max_tokens=days * 200)
+
+def generate_compare(concept_a: str, concept_b: str):
+    from modules.prompts import CONCEPT_COMPARE_PROMPT, fill
+    prompt = fill(CONCEPT_COMPARE_PROMPT, concept_a=concept_a, concept_b=concept_b)
+    return generate_with_fallback(prompt, max_tokens=1000)
