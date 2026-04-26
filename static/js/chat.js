@@ -119,7 +119,7 @@ async function sendMessage() {
       body: JSON.stringify({ 
         question,
         document_ids: activeDocuments.map(d => d.id),
-        history: isDocQa ? [] : conversationHistory.slice(-Config.MAX_HISTORY * 2)
+        history: conversationHistory.slice(-Config.MAX_HISTORY * 2)
       })
     });
 

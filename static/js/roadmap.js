@@ -56,8 +56,32 @@ async function generateRoadmap() {
     const data = await res.json();
 
     if (!res.ok) {
-      body.innerHTML = `<div class="roadmap-loading" style="color:#f44336">${data.error || 'Failed to generate roadmap'}</div>`;
-      return;
+      if (data.error && data.error.includes("providers are busy")) {
+        let timeLeft = 60;
+        body.innerHTML = `
+          <div class="roadmap-loading" style="color:#f9a826;">
+            <div style="font-size: 24px; margin-bottom: 12px;">⏳</div>
+            All AI providers are currently busy.<br>
+            Please wait <strong id="quota-timer-rm">${timeLeft}</strong> seconds and try again.
+          </div>
+        `;
+        const timerInterval = setInterval(() => {
+          timeLeft--;
+          const timerEl = document.getElementById('quota-timer-rm');
+          if (timerEl) timerEl.textContent = timeLeft;
+          if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            if (timerEl) {
+              body.innerHTML = `<div class="roadmap-loading" style="color:#4caf50;">Ready to try again! Click Generate.</div>`;
+              btn.disabled = false;
+            }
+          }
+        }, 1000);
+        return;
+      } else {
+        body.innerHTML = `<div class="roadmap-loading" style="color:#f44336">${data.error || 'Failed to generate roadmap'}</div>`;
+        return;
+      }
     }
 
     currentRoadmap = data;

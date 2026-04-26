@@ -342,6 +342,7 @@ def ask_document():
         data = request.get_json()
         question = data.get('question', '').strip()
         document_ids = data.get('document_ids', [])
+        history = data.get('history', [])[-Config.MAX_HISTORY * 2:]
 
         if not question:
             return jsonify({'error': 'Please ask a question'}), 400
@@ -361,7 +362,7 @@ def ask_document():
         from modules.prompts import get_document_qa_prompt
         from modules.ai import stream_with_fallbacks
         
-        prompt = get_document_qa_prompt(docs, question)
+        prompt = get_document_qa_prompt(docs, question, history)
 
         return Response(
             stream_with_context(stream_with_fallbacks(prompt)),

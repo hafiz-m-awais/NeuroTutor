@@ -49,8 +49,32 @@ async function generateQuiz(topic) {
     const data = await res.json();
 
     if (!res.ok) {
-      body.innerHTML = `<div class="quiz-loading" style="color:#f44336">${data.error || 'Failed to generate quiz'}</div>`;
-      return;
+      if (data.error && data.error.includes("providers are busy")) {
+        let timeLeft = 60;
+        body.innerHTML = `
+          <div class="quiz-loading" style="color:#f9a826;">
+            <div style="font-size: 24px; margin-bottom: 12px;">⏳</div>
+            All AI providers are currently busy.<br>
+            Please wait <strong id="quota-timer">${timeLeft}</strong> seconds and try again.
+          </div>
+        `;
+        const timerInterval = setInterval(() => {
+          timeLeft--;
+          const timerEl = document.getElementById('quota-timer');
+          if (timerEl) timerEl.textContent = timeLeft;
+          if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            if (timerEl) {
+              body.innerHTML = `<div class="quiz-loading" style="color:#4caf50;">Ready to try again! Click Generate.</div>`;
+              btn.disabled = false;
+            }
+          }
+        }, 1000);
+        return; // Exit and let timer re-enable button
+      } else {
+        body.innerHTML = `<div class="quiz-loading" style="color:#f44336">${data.error || 'Failed to generate quiz'}</div>`;
+        return;
+      }
     }
 
     quizData = data;

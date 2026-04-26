@@ -226,7 +226,7 @@ Provide a clear and educational summary in this format:
 
 Keep it concise, encouraging, and student-friendly. Use formatting (bolding) to highlight important terms."""
 
-def get_document_qa_prompt(docs: list, question: str) -> str:
+def get_document_qa_prompt(docs: list, question: str, history: list = None) -> str:
     prompt = "You are helping a Pakistani CS student understand the provided documents.\n\n"
     
     # Fix 8: Smarter context — for long docs, include both start AND end
@@ -247,6 +247,13 @@ def get_document_qa_prompt(docs: list, question: str) -> str:
             prompt += f"{head}\n\n[... document continues ...]\n\n{tail}\n\n"
         else:
             prompt += f"{content}\n\n"
+        
+    if history:
+        prompt += "--- Previous Conversation History ---\n"
+        for msg in history:
+            role = "Student" if msg['role'] == 'user' else "AI Tutor"
+            prompt += f"{role}: {msg['content']}\n"
+        prompt += "\n"
         
     prompt += f"Student question: {question}\n\n"
     prompt += "Answer based on the document contents. If the answer requires comparing documents, do so clearly. If the answer is not in the documents, say so clearly.\nKeep the answer concise and educational."
