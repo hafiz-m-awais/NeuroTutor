@@ -5,9 +5,11 @@ from cachetools import TTLCache
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from config import Config
 from modules.validators import validate_request
 from werkzeug.utils import secure_filename
+from modules.models import db, User
 from modules.ai import build_prompt, stream_response, stream_debug, generate_quiz, generate_roadmap, generate_compare, initialize_keys
 logging.basicConfig(
     level=logging.INFO,
@@ -21,15 +23,37 @@ log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = Config.SECRET_KEY
+app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = Config.SQLALCHEMY_TRACK_MODIFICATIONS
 app.config.update(
     SESSION_COOKIE_SAMESITE="None",
     SESSION_COOKIE_SECURE=True,
 )
+
+# Initialize Database and LoginManager
+db.init_app(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+with app.app_context():
+    db.create_all()
 initialize_keys()
 log.info(f"Total API keys loaded: {len(Config.GEMINI_API_KEYS)}")
 
+def get_real_ip():
+    """Resolve IP correctly behind Hugging Face / Nginx reverse proxy."""
+    forwarded = request.headers.get('X-Forwarded-For')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.remote_addr
+
 limiter = Limiter(
-    get_remote_address,
+    get_real_ip,
     app=app,
     default_limits=[Config.RATE_LIMIT_PER_DAY, Config.RATE_LIMIT_PER_HOUR],
     storage_uri="memory://"
@@ -37,9 +61,58 @@ limiter = Limiter(
 
 
 @app.route('/')
+@login_required
 def home():
     log.info("Home accessed")
-    return render_template('index.html')
+    return render_template('index.html', current_user=current_user)
+
+# --- Authentication Routes ---
+
+@app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
+def register():
+    if request.method == 'GET':
+        return render_template('register.html')
+        
+    data = request.json
+    email = data.get('email')
+    password = data.get('password')
+    
+    if not email or not password:
+        return jsonify({'error': 'Email and password are required'}), 400
+        
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': 'Email already registered'}), 400
+        
+    user = User(email=email)
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+    
+    login_user(user)
+    return jsonify({'success': True, 'message': 'Registration successful'})
+
+@app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
+def login():
+    if request.method == 'GET':
+        return render_template('login.html')
+        
+    data = request.json
+    email = data.get('email')
+    password = data.get('password')
+    
+    user = User.query.filter_by(email=email).first()
+    if user and user.check_password(password):
+        login_user(user)
+        return jsonify({'success': True, 'message': 'Logged in successfully'})
+        
+    return jsonify({'error': 'Invalid email or password'}), 401
+
+@app.route('/logout', methods=['POST', 'GET'])
+def logout():
+    logout_user()
+    return render_template('login.html', message='Logged out successfully')
 
 
 @app.before_request
@@ -47,9 +120,16 @@ def csrf_origin_check():
     if request.method == 'POST':
         origin = request.headers.get('Origin') or request.headers.get('Referer', '')
         if origin:
+            # Origin present — check it's in our allowlist
             allowed = any(origin.startswith(o) for o in Config.ALLOWED_ORIGINS)
             if not allowed:
                 log.warning(f"CSRF blocked — Origin: {origin}")
+                return jsonify({'error': 'Forbidden'}), 403
+        else:
+            # No Origin/Referer — only allow if AJAX header present (blocks raw curl)
+            xhr = request.headers.get('X-Requested-With', '')
+            if xhr.lower() != 'xmlhttprequest':
+                log.warning(f"CSRF blocked — no Origin/Referer and missing XHR header")
                 return jsonify({'error': 'Forbidden'}), 403
 
 

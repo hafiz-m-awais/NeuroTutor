@@ -12,6 +12,8 @@ class Config:
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
     OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
     SECRET_KEY = os.getenv('SECRET_KEY', os.urandom(32).hex())
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///neurotutor.db')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
     MAX_INPUT_LENGTH = 3000
     MIN_INPUT_LENGTH = 3
     MAX_OUTPUT_TOKENS = 1024

@@ -49,7 +49,7 @@ async function generateRoadmap() {
   try {
     const res = await fetch('/roadmap', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       body: JSON.stringify({ topic, days, level })
     });
 
@@ -199,14 +199,32 @@ function downloadRoadmap() {
 
   if (format === 'pdf') {
     const element = document.getElementById('roadmap-body');
+    // Fix 7: Apply clean white styling for PDF export
+    const origBg = element.style.background;
+    const origColor = element.style.color;
+    element.style.background = '#ffffff';
+    element.style.color = '#1a1a1a';
+    // Style all day cards for print
+    element.querySelectorAll('.roadmap-day').forEach(d => {
+      d.style.borderColor = '#e0e0e0';
+      d.style.background = '#f9f9f9';
+    });
     const opt = {
-      margin: 10,
+      margin: [15, 12],
       filename: exportData.fileName,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-    html2pdf().set(opt).from(element).save();
+    html2pdf().set(opt).from(element).save().then(() => {
+      // Restore original styling
+      element.style.background = origBg;
+      element.style.color = origColor;
+      element.querySelectorAll('.roadmap-day').forEach(d => {
+        d.style.borderColor = '';
+        d.style.background = '';
+      });
+    });
     return;
   }
 

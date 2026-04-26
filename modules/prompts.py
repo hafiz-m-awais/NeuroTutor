@@ -229,12 +229,24 @@ Keep it concise, encouraging, and student-friendly. Use formatting (bolding) to 
 def get_document_qa_prompt(docs: list, question: str) -> str:
     prompt = "You are helping a Pakistani CS student understand the provided documents.\n\n"
     
-    # Partition the 8000 character limit evenly among all documents
-    chars_per_doc = 8000 // max(1, len(docs))
+    # Fix 8: Smarter context — for long docs, include both start AND end
+    # Total budget: 10000 chars, partitioned per document
+    total_budget = 10000
+    chars_per_doc = total_budget // max(1, len(docs))
+    head_chars = int(chars_per_doc * 0.75)  # 75% from start (intro, definitions)
+    tail_chars = int(chars_per_doc * 0.25)  # 25% from end (conclusions, summaries)
     
     for i, doc in enumerate(docs):
+        content = doc['content']
         prompt += f"--- Document {i+1}: {doc['filename']} ---\n"
-        prompt += f"{doc['content'][:chars_per_doc]}\n\n"
+        
+        if len(content) > chars_per_doc:
+            # Long document: include head + tail with divider
+            head = content[:head_chars]
+            tail = content[-tail_chars:]
+            prompt += f"{head}\n\n[... document continues ...]\n\n{tail}\n\n"
+        else:
+            prompt += f"{content}\n\n"
         
     prompt += f"Student question: {question}\n\n"
     prompt += "Answer based on the document contents. If the answer requires comparing documents, do so clearly. If the answer is not in the documents, say so clearly.\nKeep the answer concise and educational."

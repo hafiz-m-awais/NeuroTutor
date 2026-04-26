@@ -31,19 +31,19 @@
         border-radius: 8px;
         overflow: hidden;
         margin: 8px 0;
-        border: 1px solid #2a2a3e;
+        border: 1px solid var(--border);
       }
       .code-header {
-        background: #2a2a3e;
+        background: var(--card-bg);
         padding: 6px 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #3a3a4e;
+        border-bottom: 1px solid var(--border);
       }
       .code-lang {
         font-size: 11px;
-        color: #888;
+        color: var(--subtext);
         font-family: monospace;
       }
       .code-actions {
@@ -56,11 +56,11 @@
         border-radius: 4px;
         font-size: 11px;
         cursor: pointer;
-        border: 1px solid #3a3a4e;
+        border: 1px solid var(--border);
         transition: all 0.2s;
       }
       .run-btn {
-        background: #1a3a1a;
+        background: rgba(76, 175, 80, 0.1);
         color: #4caf50;
       }
       .run-btn:hover {
@@ -68,12 +68,13 @@
         color: white;
       }
       .copy-btn {
-        background: #1a1a2e;
-        color: #888;
+        background: var(--bg);
+        color: var(--subtext);
       }
       .copy-btn:hover {
-        background: #3a3a4e;
+        background: var(--accent);
         color: white;
+        border-color: var(--accent);
       }
       .code-block-wrapper pre {
         background: #1e1e2e;
@@ -91,7 +92,7 @@
         font-family: monospace;
         font-size: 12px;
         white-space: pre-wrap;
-        border-top: 1px solid #2a2a3e;
+        border-top: 1px solid var(--border);
         max-height: 200px;
         overflow-y: auto;
       }
@@ -332,10 +333,23 @@
         </div>
       </div>
       <div class="header-right">
+        {% if current_user.is_authenticated %}
+        <div class="status" style="margin-right: 8px;">
+          <div class="dot"></div>
+          {{ current_user.email.split('@')[0] }}
+        </div>
+        <button
+          onclick="window.location.href='/logout'"
+          style="background: transparent; border: 1px solid var(--border); color: var(--subtext); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-right: 12px;"
+        >
+          Logout
+        </button>
+        {% else %}
         <div class="status">
           <div class="dot"></div>
           Online
         </div>
+        {% endif %}
         <button
           class="dark-toggle"
           id="dark-toggle"

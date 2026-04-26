@@ -1,6 +1,17 @@
 let conversationHistory = [];
 let isStreaming = false;
-let activeDocuments = []; // Array of { id, name }
+
+// Persist documents across refreshes using sessionStorage
+const DOCS_KEY = 'neurotutor_active_docs';
+let activeDocuments = (() => {
+  try { return JSON.parse(sessionStorage.getItem(DOCS_KEY) || '[]'); }
+  catch { return []; }
+})();
+
+function saveActiveDocuments() {
+  try { sessionStorage.setItem(DOCS_KEY, JSON.stringify(activeDocuments)); }
+  catch { console.warn('sessionStorage full'); }
+}
 
 const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
@@ -104,7 +115,7 @@ async function sendMessage() {
 
     const res = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       body: JSON.stringify({ 
         question,
         document_ids: activeDocuments.map(d => d.id),
@@ -125,8 +136,9 @@ async function sendMessage() {
     const decoder = new TextDecoder();
     let fullText = '';
     let buffer = '';
+    let isDone = false;  // Fix 2: flag to break outer while loop
 
-    while (true) {
+    while (!isDone) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -136,7 +148,7 @@ async function sendMessage() {
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6).trim();
-          if (data === '[DONE]') break;
+          if (data === '[DONE]') { isDone = true; break; }  // exits both loops
           try {
             const parsed = JSON.parse(data);
             if (parsed.text) {
@@ -193,8 +205,9 @@ async function handleChatAttachment(input) {
 
     const data = await res.json();
     
-    // Add to active documents state
+    // Add to active documents state and persist to sessionStorage
     activeDocuments.push({ id: data.document_id, name: data.filename });
+    saveActiveDocuments();
     renderDocumentChips();
 
     const mdSummary = `✅ **Document Added:** \`${data.filename}\`\n\n*This document is now in your Knowledge Base. You can upload more documents or ask questions about them!*`;
@@ -259,7 +272,7 @@ async function summarizeDocument(docId, docName) {
   try {
     const res = await fetch('/summarize-document', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       body: JSON.stringify({ document_id: docId })
     });
     
@@ -305,7 +318,7 @@ async function summarizeDocument(docId, docName) {
 
 function removeChatAttachment(docId) {
   activeDocuments = activeDocuments.filter(d => d.id !== docId);
+  saveActiveDocuments();  // Fix 1: persist after removal
   renderDocumentChips();
-  // Clear the input so the same file can be uploaded again if needed
   document.getElementById('chat-file-input').value = '';
 }

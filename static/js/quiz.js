@@ -42,7 +42,7 @@ async function generateQuiz(topic) {
   try {
     const res = await fetch('/quiz', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       body: JSON.stringify({ topic, count })
     });
 
@@ -152,6 +152,14 @@ function showScore() {
   document.getElementById('score-sub').textContent = sub;
   scoreEl.style.display = 'block';
   scoreEl.scrollIntoView({ behavior: 'smooth' });
+
+  // Fix 6: Inject quiz result into chat history so it's saved permanently
+  const emoji = pct === 100 ? '🏆' : pct >= 67 ? '✅' : pct >= 33 ? '📖' : '💪';
+  const chatMsg = `${emoji} **Quiz Complete — ${currentTopic}**\n\n**Score: ${correct}/${total} (${pct}%)**\n${msg}\n\n${sub}\n\n*Ask me to explain any topic you got wrong!*`;
+  if (typeof conversationHistory !== 'undefined' && typeof saveCurrentChat !== 'undefined') {
+    conversationHistory.push({ role: 'assistant', content: chatMsg });
+    saveCurrentChat(conversationHistory);
+  }
 }
 
 document.addEventListener('keydown', function(e) {

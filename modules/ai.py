@@ -12,6 +12,24 @@ log = logging.getLogger(__name__)
 QUOTA_FINAL = "⏳ All AI providers are busy. Please wait 1 minute and try again."
 GENERAL_ERROR = "Something went wrong. Please try again."
 
+# Fix 9: Groq model rotation — multiple models to try before failing
+GROQ_MODELS = [
+    "llama-3.3-70b-versatile",
+    "mixtral-8x7b-32768",
+    "gemma2-9b-it",
+    "llama3-70b-8192",
+]
+_groq_index = 0
+_groq_lock = threading.Lock()
+
+def get_groq_model():
+    global _groq_index
+    with _groq_lock:
+        model = GROQ_MODELS[_groq_index % len(GROQ_MODELS)]
+        _groq_index += 1
+    log.info(f"Groq model selected: {model}")
+    return model
+
 OPENROUTER_MODELS = [ 
     "google/gemma-4-26b-a4b-it:free",
     "google/gemma-4-31b-it:free",
@@ -121,21 +139,29 @@ def build_prompt(question: str, history: list) -> str:
     return "\n".join(parts)
 
 def try_groq_stream(prompt: str, max_tokens: int = 1024, temperature: float = 0.7):
+    """Fix 9: Try each Groq model in rotation before giving up."""
     if not groq_client:
         return False, None
-    try:
-        log.info("Trying Groq...")
-        stream = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-            temperature=temperature,
-            stream=True
-        )
-        return True, stream
-    except Exception as e:
-        log.warning(f"Groq failed: {e}")
-        return False, None
+    tried = set()
+    for _ in range(len(GROQ_MODELS)):
+        model = get_groq_model()
+        if model in tried:
+            continue
+        tried.add(model)
+        try:
+            log.info(f"Trying Groq model: {model}")
+            stream = groq_client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream=True
+            )
+            return True, stream
+        except Exception as e:
+            log.warning(f"Groq {model} failed: {e}")
+            continue
+    return False, None
 
 def try_openrouter_stream(prompt: str, max_tokens: int = 1024, temperature: float = 0.7):
     if not openrouter_client:
@@ -257,23 +283,30 @@ def generate_with_fallback(prompt: str, max_tokens: int = 1024, is_json: bool = 
                     log.error(f"Gemini generate error (Key {idx+1}): {e}")
                     continue
 
-    # 2 — Try Groq
+    # 2 — Try Groq with model rotation (Fix 9)
     if groq_client:
-        try:
-            log.info("Quiz trying Groq...")
-            response = groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=max_tokens,
-                temperature=0.5
-            )
-            raw = (response.choices[0].message.content or '').strip()
-            if is_json:
-                raw = raw.replace('```json', '').replace('```', '').strip()
-                return json.loads(raw), None
-            return raw, None
-        except Exception as e:
-            log.warning(f"Groq generate failed: {e}")
+        tried_groq = set()
+        for _ in range(len(GROQ_MODELS)):
+            model = get_groq_model()
+            if model in tried_groq:
+                continue
+            tried_groq.add(model)
+            try:
+                log.info(f"Generate trying Groq: {model}")
+                response = groq_client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max_tokens,
+                    temperature=0.5
+                )
+                raw = (response.choices[0].message.content or '').strip()
+                if is_json:
+                    raw = raw.replace('```json', '').replace('```', '').strip()
+                    return json.loads(raw), None
+                return raw, None
+            except Exception as e:
+                log.warning(f"Groq {model} generate failed: {e}")
+                continue
 
     # 3 — Try OpenRouter models in rotation
     if openrouter_client:
