@@ -165,6 +165,11 @@ async function sendMessage() {
     conversationHistory.push({ role: 'assistant', content: fullText });
     saveCurrentChat(conversationHistory);
 
+    // Smart Title Generation after first exchange
+    if (conversationHistory.length === 2) {
+      generateSmartTitle(conversationHistory[0].content, fullText);
+    }
+
   } catch (err) {
     removeTyping();
     addMessage('bot', 'Connection error. Please try again.');
@@ -321,4 +326,22 @@ function removeChatAttachment(docId) {
   saveActiveDocuments();  // Fix 1: persist after removal
   renderDocumentChips();
   document.getElementById('chat-file-input').value = '';
+}
+
+async function generateSmartTitle(question, answer) {
+  try {
+    const res = await fetch('/generate-title', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ question, answer })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.title) {
+        updateChatTitle(currentChatId, data.title);
+      }
+    }
+  } catch (e) {
+    console.error('Title generation failed', e);
+  }
 }

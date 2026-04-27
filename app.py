@@ -282,6 +282,30 @@ def compare():
         log.error(f"Compare error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
 
+@app.route('/generate-title', methods=['POST'])
+@login_required
+@limiter.limit("20 per minute")
+def generate_chat_title():
+    try:
+        data = request.get_json()
+        question = data.get('question', '').strip()
+        answer = data.get('answer', '').strip()
+
+        if not question or not answer:
+            return jsonify({'error': 'Question and answer required'}), 400
+
+        from modules.ai import generate_title
+        title, error = generate_title(question, answer)
+        
+        if error:
+            return jsonify({'error': error}), 500
+
+        return jsonify({'title': title})
+
+    except Exception as e:
+        log.error(f"Generate title error: {e}")
+        return jsonify({'error': 'Failed to generate title'}), 500
+
 # TTLCache: max 500 sessions, each expires after 30 minutes of inactivity
 document_store = TTLCache(maxsize=500, ttl=1800)
 

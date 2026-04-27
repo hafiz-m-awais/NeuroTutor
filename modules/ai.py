@@ -356,3 +356,8 @@ def generate_compare(concept_a: str, concept_b: str):
     from modules.prompts import CONCEPT_COMPARE_PROMPT, fill
     prompt = fill(CONCEPT_COMPARE_PROMPT, concept_a=concept_a, concept_b=concept_b)
     return generate_with_fallback(prompt, max_tokens=1000)
+
+def generate_title(question: str, answer: str):
+    from modules.prompts import TITLE_GEN_PROMPT
+    prompt = TITLE_GEN_PROMPT.format(question=question, answer=answer)
+    return generate_with_fallback(prompt, max_tokens=20)

@@ -23,6 +23,11 @@ function enhanceCodeBlocks(bubble) {
     outputDiv.className = 'code-output';
     outputDiv.style.display = 'none';
 
+    // Apply syntax highlighting
+    if (typeof hljs !== 'undefined') {
+      hljs.highlightElement(pre);
+    }
+
     wrapper.appendChild(header);
     pre.parentNode.insertBefore(wrapper, pre);
     wrapper.appendChild(pre);

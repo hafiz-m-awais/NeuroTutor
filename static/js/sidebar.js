@@ -47,6 +47,16 @@ function saveCurrentChat(messages, title) {
   renderChatList();
 }
 
+function updateChatTitle(chatId, title) {
+  const chats = getAllChats();
+  const existing = chats.findIndex(c => c.id === chatId);
+  if (existing >= 0) {
+    chats[existing].title = title;
+    saveAllChats(chats);
+    renderChatList();
+  }
+}
+
 function generateTitle(messages) {
   const firstUser = messages.find(m => m.role === 'user');
   if (!firstUser) return 'New chat';
@@ -165,7 +175,114 @@ function toggleSidebar() {
   btn.textContent = sidebar.classList.contains('collapsed') ? '☰' : '✕';
 }
 
+function showProgressDashboard() {
+  const chats = getAllChats();
+  const modal = document.getElementById('stats-modal');
+  const body = document.getElementById('stats-body');
+  
+  if (!modal || !body) return;
+  
+  let totalQuestions = 0;
+  let topics = new Set();
+  let quizScores = [];
+  let docsAnalyzed = 0;
+  
+  chats.forEach(chat => {
+    if (chat.title && chat.title !== 'New chat') {
+      topics.add(chat.title);
+    }
+    
+    chat.messages.forEach(msg => {
+      if (msg.role === 'user') {
+        totalQuestions++;
+        if (msg.content.includes('Please summarize the document:')) {
+          docsAnalyzed++;
+        }
+      }
+      
+      // Check for quiz scores injected into chat
+      if (msg.role === 'assistant' && msg.content.includes('You scored')) {
+        const match = msg.content.match(/You scored (\d+)\/(\d+)/);
+        if (match) {
+          quizScores.push({ score: parseInt(match[1]), total: parseInt(match[2]) });
+        }
+      }
+    });
+  });
+  
+  const avgQuizScore = quizScores.length > 0 
+    ? (quizScores.reduce((acc, q) => acc + (q.score / q.total), 0) / quizScores.length * 100).toFixed(0)
+    : 0;
+
+  body.innerHTML = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+      <div style="background: var(--bg); padding: 16px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+        <div style="font-size: 24px; font-weight: 800; color: var(--accent);">${totalQuestions}</div>
+        <div style="font-size: 12px; color: var(--subtext); text-transform: uppercase; margin-top: 4px;">Questions Asked</div>
+      </div>
+      <div style="background: var(--bg); padding: 16px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+        <div style="font-size: 24px; font-weight: 800; color: var(--accent);">${topics.size}</div>
+        <div style="font-size: 12px; color: var(--subtext); text-transform: uppercase; margin-top: 4px;">Topics Studied</div>
+      </div>
+      <div style="background: var(--bg); padding: 16px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+        <div style="font-size: 24px; font-weight: 800; color: var(--accent);">${docsAnalyzed}</div>
+        <div style="font-size: 12px; color: var(--subtext); text-transform: uppercase; margin-top: 4px;">Docs Analyzed</div>
+      </div>
+      <div style="background: var(--bg); padding: 16px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+        <div style="font-size: 24px; font-weight: 800; color: var(--accent);">${avgQuizScore}%</div>
+        <div style="font-size: 12px; color: var(--subtext); text-transform: uppercase; margin-top: 4px;">Avg Quiz Score</div>
+      </div>
+    </div>
+    
+    <div class="debug-label">Study Topics</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
+      ${Array.from(topics).slice(0, 10).map(t => `<span class="chip" style="margin: 0; cursor: default;">${escapeHtml(t)}</span>`).join('')}
+      ${topics.size === 0 ? '<div style="font-size: 13px; color: var(--subtext); font-style: italic;">No topics yet. Start chatting!</div>' : ''}
+    </div>
+    
+    <div class="debug-label">Quiz History</div>
+    <div style="font-size: 13px; color: var(--subtext);">
+      ${quizScores.length > 0 ? `You have completed ${quizScores.length} quizzes. Keep up the good work!` : 'No quizzes completed yet.'}
+    </div>
+  `;
+  
+  modal.classList.add('open');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   currentChatId = generateId();
   renderChatList();
+
+  // Mobile Swipe Gestures
+  let touchStartX = 0;
+  let touchEndX = 0;
+  
+  window.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+  }, { passive: true });
+  
+  window.addEventListener('touchend', e => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+  }, { passive: true });
+  
+  function handleSwipe() {
+    const sidebar = document.getElementById('sidebar');
+    const swipeDistance = touchEndX - touchStartX;
+    const threshold = 100;
+    
+    // Swipe Right (from left edge) -> Open
+    if (swipeDistance > threshold && touchStartX < 50) {
+      if (sidebar.classList.contains('collapsed')) {
+        toggleSidebar();
+      }
+    }
+    
+    // Swipe Left -> Close
+    if (swipeDistance < -threshold) {
+      if (!sidebar.classList.contains('collapsed')) {
+        toggleSidebar();
+      }
+    }
+  }
 });

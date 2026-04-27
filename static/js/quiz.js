@@ -39,6 +39,21 @@ async function generateQuiz(topic) {
   header.textContent = topic;
   body.innerHTML = `<div class="quiz-loading">Generating quiz on "${topic}"...<br><br>Please wait a moment.</div>`;
 
+  // Check Cache
+  const cacheKey = `quiz_cache_${topic.toLowerCase()}_${count}`;
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    const { data, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp < 600000) { // 10 minutes
+      console.info(`Loading quiz for ${topic} from cache`);
+      quizData = data;
+      renderQuiz();
+      btn.disabled = false;
+      btn.textContent = 'Generate';
+      return;
+    }
+  }
+
   try {
     const res = await fetch('/quiz', {
       method: 'POST',
@@ -78,6 +93,7 @@ async function generateQuiz(topic) {
     }
 
     quizData = data;
+    sessionStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
     renderQuiz();
 
   } catch (err) {

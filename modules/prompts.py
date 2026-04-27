@@ -288,7 +288,19 @@ Return ONLY valid JSON. No preamble, no markdown fences, no extra text.
   "use_a_when": "practical scenario for A",
   "use_b_when": "practical scenario for B",
   "analogy": "a real-world analogy that makes both clear at once"
-}"""
+}
+"""
+
+TITLE_GEN_PROMPT = """You are a helpful assistant. Based on the user's first question and the AI's response, generate a 3-5 word descriptive title for this conversation.
+Do NOT use quotes or a period. Just the words.
+Example User: "What is backpropagation?"
+Example Title: Backpropagation in Neural Networks
+
+Conversation:
+User: {question}
+AI: {answer}
+
+Title:"""
 
 # Usage: fill(CONCEPT_COMPARE_PROMPT, concept_a="list", concept_b="tuple")
 
