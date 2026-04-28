@@ -9,7 +9,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from config import Config
 from modules.validators import validate_request
 from werkzeug.utils import secure_filename
-from modules.models import db, User
+from modules.models import db, User, Chat, Message
 from modules.ai import build_prompt, stream_response, stream_debug, generate_quiz, generate_roadmap, generate_compare, initialize_keys
 logging.basicConfig(
     level=logging.INFO,
@@ -113,6 +113,75 @@ def login():
 def logout():
     logout_user()
     return render_template('login.html', message='Logged out successfully')
+
+# --- Cloud Sync API ---
+
+@app.route('/api/chats', methods=['GET'])
+@login_required
+def get_chats():
+    try:
+        chats = Chat.query.filter_by(user_id=current_user.id).order_by(Chat.updated_at.desc()).all()
+        return jsonify([{'id': c.id, 'title': c.title, 'updatedAt': int(c.updated_at.timestamp() * 1000)} for c in chats])
+    except Exception as e:
+        log.error(f"Error fetching chats: {e}")
+        return jsonify([]), 500
+
+@app.route('/api/chats/<chat_id>', methods=['GET'])
+@login_required
+def get_chat_details(chat_id):
+    try:
+        chat = Chat.query.filter_by(id=chat_id, user_id=current_user.id).first_or_404()
+        messages = [{'role': m.role, 'content': m.content} for m in chat.messages]
+        return jsonify({'id': chat.id, 'title': chat.title, 'messages': messages})
+    except Exception as e:
+        log.error(f"Error fetching chat details: {e}")
+        return jsonify({'error': 'Chat not found'}), 404
+
+@app.route('/api/chats', methods=['POST'])
+@login_required
+def save_chat():
+    try:
+        data = request.get_json()
+        chat_id = data.get('id')
+        title = data.get('title')
+        messages = data.get('messages', [])
+        
+        if not chat_id or not title:
+            return jsonify({'error': 'Missing ID or Title'}), 400
+            
+        chat = Chat.query.filter_by(id=chat_id, user_id=current_user.id).first()
+        if not chat:
+            chat = Chat(id=chat_id, user_id=current_user.id, title=title)
+            db.session.add(chat)
+        else:
+            chat.title = title
+            chat.updated_at = datetime.utcnow()
+        
+        # Clear and rebuild messages for this chat
+        Message.query.filter_by(chat_id=chat_id).delete()
+        for msg in messages:
+            m = Message(chat_id=chat_id, role=msg['role'], content=msg['content'])
+            db.session.add(m)
+            
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        log.error(f"Error saving chat: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chats/<chat_id>', methods=['DELETE'])
+@login_required
+def delete_chat_api(chat_id):
+    try:
+        chat = Chat.query.filter_by(id=chat_id, user_id=current_user.id).first_or_404()
+        db.session.delete(chat)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        log.error(f"Error deleting chat: {e}")
+        return jsonify({'error': 'Delete failed'}), 500
 
 
 @app.before_request

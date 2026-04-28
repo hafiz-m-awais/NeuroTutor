@@ -2,32 +2,90 @@ const STORAGE_KEY = 'neurotutor_chats';
 const MAX_CHATS = 50;
 
 let currentChatId = null;
+let cachedChats = [];
 
 function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+  return 'chat_' + Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-function getAllChats() {
+// --- Cloud Sync Helpers ---
+
+async function fetchAllChats() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  } catch {
-    return [];
+    const res = await fetch('/api/chats', {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    });
+    if (res.ok) {
+      cachedChats = await res.json();
+      renderChatList();
+    }
+  } catch (err) {
+    console.error('Failed to fetch chats from cloud', err);
   }
 }
 
-function saveAllChats(chats) {
+async function fetchChatDetails(chatId) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
-  } catch {
-    console.warn('Storage full');
+    const res = await fetch(`/api/chats/${chatId}`, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.error('Failed to fetch chat details', err);
+  }
+  return null;
+}
+
+async function uploadChat(chatData) {
+  try {
+    await fetch('/api/chats', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest' 
+      },
+      body: JSON.stringify(chatData)
+    });
+  } catch (err) {
+    console.error('Failed to sync chat to cloud', err);
   }
 }
 
-function saveCurrentChat(messages, title) {
+async function removeChatFromServer(chatId) {
+  try {
+    await fetch(`/api/chats/${chatId}`, {
+      method: 'DELETE',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    });
+  } catch (err) {
+    console.error('Failed to delete chat from cloud', err);
+  }
+}
+
+// --- Migration logic ---
+async function migrateLegacyChats() {
+  const legacy = localStorage.getItem(STORAGE_KEY);
+  if (!legacy) return;
+
+  try {
+    const chats = JSON.parse(legacy);
+    if (chats.length > 0) {
+      console.info(`Migrating ${chats.length} legacy chats to cloud...`);
+      for (const chat of chats) {
+        await uploadChat(chat);
+      }
+    }
+    localStorage.removeItem(STORAGE_KEY);
+    await fetchAllChats();
+  } catch (e) {
+    console.error('Migration failed', e);
+  }
+}
+
+// --- Main Chat Logic ---
+
+async function saveCurrentChat(messages, title) {
   if (!messages || messages.length === 0) return;
-
-  const chats = getAllChats();
-  const existing = chats.findIndex(c => c.id === currentChatId);
 
   const chatData = {
     id: currentChatId,
@@ -36,24 +94,29 @@ function saveCurrentChat(messages, title) {
     updatedAt: Date.now()
   };
 
-  if (existing >= 0) {
-    chats[existing] = chatData;
+  // Optimistic UI update
+  const idx = cachedChats.findIndex(c => c.id === currentChatId);
+  if (idx >= 0) {
+    cachedChats[idx] = { id: chatData.id, title: chatData.title, updatedAt: chatData.updatedAt };
   } else {
-    chats.unshift(chatData);
-    if (chats.length > MAX_CHATS) chats.pop();
+    cachedChats.unshift({ id: chatData.id, title: chatData.title, updatedAt: chatData.updatedAt });
   }
-
-  saveAllChats(chats);
   renderChatList();
+
+  // Sync to server
+  await uploadChat(chatData);
 }
 
-function updateChatTitle(chatId, title) {
-  const chats = getAllChats();
-  const existing = chats.findIndex(c => c.id === chatId);
-  if (existing >= 0) {
-    chats[existing].title = title;
-    saveAllChats(chats);
+async function updateChatTitle(chatId, title) {
+  const chatData = await fetchChatDetails(chatId);
+  if (chatData) {
+    chatData.title = title;
+    // Update local cache for UI
+    const idx = cachedChats.findIndex(c => c.id === chatId);
+    if (idx >= 0) cachedChats[idx].title = title;
     renderChatList();
+    // Sync to server
+    await uploadChat(chatData);
   }
 }
 
@@ -64,9 +127,8 @@ function generateTitle(messages) {
   return title.length < firstUser.content.length ? title + '...' : title;
 }
 
-function loadChat(chatId) {
-  const chats = getAllChats();
-  const chat = chats.find(c => c.id === chatId);
+async function loadChat(chatId) {
+  const chat = await fetchChatDetails(chatId);
   if (!chat) return;
 
   currentChatId = chatId;
@@ -98,17 +160,19 @@ function loadChat(chatId) {
   }
 }
 
-function deleteChat(chatId, event) {
+async function deleteChat(chatId, event) {
   event.stopPropagation();
   if (!confirm('Delete this chat? This cannot be undone.')) return;
 
-  const chats = getAllChats().filter(c => c.id !== chatId);
-  saveAllChats(chats);
+  // Optimistic UI update
+  cachedChats = cachedChats.filter(c => c.id !== chatId);
+  renderChatList();
+
+  // Sync to server
+  await removeChatFromServer(chatId);
 
   if (currentChatId === chatId) {
     startNewChat();
-  } else {
-    renderChatList();
   }
 }
 
@@ -129,11 +193,10 @@ function startNewChat() {
 }
 
 function renderChatList() {
-  const chats = getAllChats();
   const listEl = document.getElementById('chat-list');
   if (!listEl) return;
 
-  if (chats.length === 0) {
+  if (cachedChats.length === 0) {
     listEl.innerHTML = `
       <div class="empty-chats">
         No previous chats yet.<br>Start asking questions!
@@ -141,7 +204,7 @@ function renderChatList() {
     return;
   }
 
-  listEl.innerHTML = chats.map(chat => `
+  listEl.innerHTML = cachedChats.map(chat => `
     <div class="chat-item ${chat.id === currentChatId ? 'active' : ''}"
          onclick="loadChat('${chat.id}')">
       <div class="chat-item-text">
@@ -170,42 +233,40 @@ function timeAgo(timestamp) {
 
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
   sidebar.classList.toggle('collapsed');
   const btn = document.getElementById('sidebar-toggle');
-  btn.textContent = sidebar.classList.contains('collapsed') ? '☰' : '✕';
+  if (btn) btn.textContent = sidebar.classList.contains('collapsed') ? '☰' : '✕';
 }
 
-function showProgressDashboard() {
-  const chats = getAllChats();
+async function showProgressDashboard() {
   const modal = document.getElementById('stats-modal');
   const body = document.getElementById('stats-body');
-  
   if (!modal || !body) return;
-  
+
+  body.innerHTML = `<div class="quiz-loading">Calculating your progress...</div>`;
+  modal.classList.add('open');
+
   let totalQuestions = 0;
   let topics = new Set();
   let quizScores = [];
   let docsAnalyzed = 0;
-  
-  chats.forEach(chat => {
-    if (chat.title && chat.title !== 'New chat') {
-      topics.add(chat.title);
-    }
+
+  // We need full details for stats, so we fetch each chat sequentially or in parallel
+  const fullChats = await Promise.all(cachedChats.slice(0, 20).map(c => fetchChatDetails(c.id)));
+
+  fullChats.forEach(chat => {
+    if (!chat) return;
+    if (chat.title && chat.title !== 'New chat') topics.add(chat.title);
     
     chat.messages.forEach(msg => {
       if (msg.role === 'user') {
         totalQuestions++;
-        if (msg.content.includes('Please summarize the document:')) {
-          docsAnalyzed++;
-        }
+        if (msg.content.includes('Please summarize the document:')) docsAnalyzed++;
       }
-      
-      // Check for quiz scores injected into chat
       if (msg.role === 'assistant' && msg.content.includes('You scored')) {
         const match = msg.content.match(/You scored (\d+)\/(\d+)/);
-        if (match) {
-          quizScores.push({ score: parseInt(match[1]), total: parseInt(match[2]) });
-        }
+        if (match) quizScores.push({ score: parseInt(match[1]), total: parseInt(match[2]) });
       }
     });
   });
@@ -245,13 +306,14 @@ function showProgressDashboard() {
       ${quizScores.length > 0 ? `You have completed ${quizScores.length} quizzes. Keep up the good work!` : 'No quizzes completed yet.'}
     </div>
   `;
-  
-  modal.classList.add('open');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   currentChatId = generateId();
-  renderChatList();
+  
+  // Initial Sync
+  await migrateLegacyChats();
+  await fetchAllChats();
 
   // Mobile Swipe Gestures
   let touchStartX = 0;
@@ -268,21 +330,15 @@ document.addEventListener('DOMContentLoaded', () => {
   
   function handleSwipe() {
     const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
     const swipeDistance = touchEndX - touchStartX;
     const threshold = 100;
     
-    // Swipe Right (from left edge) -> Open
     if (swipeDistance > threshold && touchStartX < 50) {
-      if (sidebar.classList.contains('collapsed')) {
-        toggleSidebar();
-      }
+      if (sidebar.classList.contains('collapsed')) toggleSidebar();
     }
-    
-    // Swipe Left -> Close
     if (swipeDistance < -threshold) {
-      if (!sidebar.classList.contains('collapsed')) {
-        toggleSidebar();
-      }
+      if (!sidebar.classList.contains('collapsed')) toggleSidebar();
     }
   }
 });

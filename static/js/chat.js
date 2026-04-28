@@ -163,7 +163,7 @@ async function sendMessage() {
     }
 
     conversationHistory.push({ role: 'assistant', content: fullText });
-    saveCurrentChat(conversationHistory);
+    await saveCurrentChat(conversationHistory);
 
     // Smart Title Generation after first exchange
     if (conversationHistory.length === 2) {
@@ -311,7 +311,7 @@ async function summarizeDocument(docId, docName) {
     }
     
     conversationHistory.push({ role: 'assistant', content: fullText });
-    saveCurrentChat(conversationHistory);
+    await saveCurrentChat(conversationHistory);
     
   } catch (err) {
     bubble.innerHTML = 'Sorry, failed to summarize this document.';
