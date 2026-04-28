@@ -88,6 +88,8 @@ def register():
         
     user = User(email=email)
     user.set_password(password)
+    user.security_question = data.get('security_question')
+    user.set_security_answer(data.get('security_answer'))
     db.session.add(user)
     db.session.commit()
     
@@ -113,6 +115,39 @@ def login():
         return jsonify({'success': True, 'message': 'Logged in successfully'})
         
     return jsonify({'error': 'Invalid email or password'}), 401
+
+@app.route('/reset-password', methods=['GET'])
+def reset_password_page():
+    return render_template('reset_password.html')
+
+@app.route('/api/forgot-password', methods=['POST'])
+@limiter.limit("5 per minute")
+def api_forgot_password():
+    data = request.json
+    email = data.get('email')
+    user = User.query.filter_by(email=email).first()
+    if not user or not user.security_question:
+        return jsonify({'error': 'Account not found or recovery not set up'}), 404
+    return jsonify({'question': user.security_question})
+
+@app.route('/api/reset-password', methods=['POST'])
+@limiter.limit("5 per minute")
+def api_reset_password():
+    data = request.json
+    email = data.get('email')
+    answer = data.get('answer')
+    new_password = data.get('newPassword')
+    
+    if not email or not answer or not new_password:
+        return jsonify({'error': 'All fields are required'}), 400
+        
+    user = User.query.filter_by(email=email).first()
+    if user and user.check_security_answer(answer):
+        user.set_password(new_password)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Password reset successful'})
+        
+    return jsonify({'error': 'Incorrect answer to security question'}), 401
 
 @app.route('/logout', methods=['POST', 'GET'])
 def logout():

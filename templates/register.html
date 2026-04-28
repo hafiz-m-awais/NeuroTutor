@@ -109,6 +109,20 @@
           <label>Confirm Password</label>
           <input type="password" id="confirm-password" required minlength="6" placeholder="••••••••" />
         </div>
+        <div class="input-group">
+          <label>Security Question (for password recovery)</label>
+          <select id="security-question" required style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 14px;">
+            <option value="" disabled selected>Select a question</option>
+            <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+            <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+            <option value="What was the name of your elementary school?">What was the name of your elementary school?</option>
+            <option value="In what city were you born?">In what city were you born?</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Security Answer</label>
+          <input type="text" id="security-answer" required placeholder="Your answer" />
+        </div>
         <button type="submit" class="auth-btn" id="submit-btn">Sign Up</button>
       </form>
       
@@ -123,6 +137,8 @@
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const confirm = document.getElementById('confirm-password').value;
+        const security_question = document.getElementById('security-question').value;
+        const security_answer = document.getElementById('security-answer').value;
         const btn = document.getElementById('submit-btn');
         const errEl = document.getElementById('error-msg');
         
@@ -140,7 +156,7 @@
           const res = await fetch('/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password, security_question, security_answer })
           });
           
           const data = await res.json();
