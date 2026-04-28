@@ -114,9 +114,6 @@
           <label for="remember" style="margin: 0; cursor: pointer; font-size: 13px; color: var(--subtext);">Remember Me</label>
         </div>
         <button type="submit" class="auth-btn" id="submit-btn">Sign In</button>
-        <div style="margin-top: 12px; font-size: 13px;">
-          <a href="/reset-password" style="color: var(--subtext); text-decoration: none;">Forgot Password?</a>
-        </div>
       </form>
       
       <div class="auth-footer">
@@ -148,7 +145,11 @@
           if (res.ok) {
             window.location.href = '/';
           } else {
-            errEl.textContent = data.error;
+            if (data.error === 'Invalid email or password') {
+              errEl.innerHTML = `Invalid email or password. <a href="/reset-password" style="color: inherit; text-decoration: underline; font-weight: 600;">Reset it?</a>`;
+            } else {
+              errEl.textContent = data.error;
+            }
             errEl.style.display = 'block';
             btn.disabled = false;
             btn.textContent = 'Sign In';
