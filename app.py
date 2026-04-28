@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from cachetools import TTLCache
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context, session
 from flask_limiter import Limiter
@@ -28,6 +28,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = Config.SQLALCHEMY_TRACK_MODIFICAT
 app.config.update(
     SESSION_COOKIE_SAMESITE="None",
     SESSION_COOKIE_SECURE=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+    REMEMBER_COOKIE_DURATION=timedelta(days=30)
 )
 
 # Initialize Database and LoginManager
@@ -89,7 +91,8 @@ def register():
     db.session.add(user)
     db.session.commit()
     
-    login_user(user)
+    session.permanent = True
+    login_user(user, remember=True)
     return jsonify({'success': True, 'message': 'Registration successful'})
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -104,7 +107,9 @@ def login():
     
     user = User.query.filter_by(email=email).first()
     if user and user.check_password(password):
-        login_user(user)
+        remember = data.get('remember', False)
+        session.permanent = True if remember else False
+        login_user(user, remember=remember)
         return jsonify({'success': True, 'message': 'Logged in successfully'})
         
     return jsonify({'error': 'Invalid email or password'}), 401

@@ -109,6 +109,10 @@
           <label>Password</label>
           <input type="password" id="password" required placeholder="••••••••" />
         </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; text-align: left;">
+          <input type="checkbox" id="remember" style="width: auto; margin: 0; cursor: pointer;" />
+          <label for="remember" style="margin: 0; cursor: pointer; font-size: 13px; color: var(--subtext);">Remember Me</label>
+        </div>
         <button type="submit" class="auth-btn" id="submit-btn">Sign In</button>
       </form>
       
@@ -122,6 +126,7 @@
         e.preventDefault();
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
+        const remember = document.getElementById('remember').checked;
         const btn = document.getElementById('submit-btn');
         const errEl = document.getElementById('error-msg');
         
@@ -133,7 +138,7 @@
           const res = await fetch('/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password, remember })
           });
           
           const data = await res.json();
