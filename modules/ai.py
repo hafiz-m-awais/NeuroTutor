@@ -238,12 +238,20 @@ def stream_with_fallbacks(prompt: str, max_tokens: int = 1024, temperature: floa
                         "temperature": temperature,
                     }
                 )
+                yielded = False
                 for chunk in response:
-                    chunk_text = getattr(chunk, 'text', None)
+                    try:
+                        chunk_text = chunk.text
+                    except (AttributeError, ValueError):
+                        chunk_text = None
                     if chunk_text:
+                        yielded = True
                         yield f"data: {json.dumps({'text': chunk_text})}\n\n"
-                yield "data: [DONE]\n\n"
-                return
+                if yielded:
+                    yield "data: [DONE]\n\n"
+                    return
+                # Stream returned no text — fall through to next provider
+                log.warning(f"Gemini key {idx+1} returned empty stream, trying next provider")
             except Exception as e:
                 if is_quota_error(e):
                     rotator.mark_exceeded(idx)
