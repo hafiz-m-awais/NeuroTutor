@@ -37,6 +37,18 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'  # pyright: ignore[reportAttributeAccessIssue]
 
+@login_manager.unauthorized_handler
+def unauthorized():
+    """Return JSON 401 for AJAX/fetch requests instead of a silent HTML redirect.
+    This prevents the SSE reader from receiving an HTML login page and showing
+    an empty response bubble when the session has expired.
+    """
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+       request.accept_mimetypes.accept_json:
+        return jsonify({'error': 'Session expired. Please log in again.', 'redirect': '/login'}), 401
+    from flask import redirect, url_for
+    return redirect(url_for('login'))
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))

@@ -219,6 +219,9 @@ def yield_openai_stream(stream):
     yield "data: [DONE]\n\n"
 
 def stream_with_fallbacks(prompt: str, max_tokens: int = 1024, temperature: float = 0.7):
+    # Send an SSE comment immediately so the proxy/browser establishes the
+    # connection and starts reading before any blocking API call happens.
+    yield ": ping\n\n"
     # 1 — Try Gemini keys
     if not rotator.all_on_cooldown():
         max_attempts = len(Config.GEMINI_API_KEYS)

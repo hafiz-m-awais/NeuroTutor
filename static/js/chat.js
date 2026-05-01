@@ -125,8 +125,17 @@ async function sendMessage() {
 
     if (!res.ok) {
       removeTyping();
-      const err = await res.json();
-      addMessage('bot', err.error || 'Something went wrong.');
+      try {
+        const err = await res.json();
+        if (res.status === 401) {
+          addMessage('bot', '🔒 Your session has expired. Please <a href="/login">log in again</a>.');
+          setTimeout(() => { window.location.href = '/login'; }, 2500);
+        } else {
+          addMessage('bot', err.error || 'Something went wrong.');
+        }
+      } catch(_) {
+        addMessage('bot', 'Something went wrong. Please try again.');
+      }
       return;
     }
 
@@ -163,6 +172,15 @@ async function sendMessage() {
     }
 
     conversationHistory.push({ role: 'assistant', content: fullText });
+
+    // If the stream completed with no text (provider failure, silent redirect, etc.),
+    // show a meaningful fallback instead of an empty bubble.
+    if (!fullText.trim()) {
+      bubble.innerHTML = '⚠️ No response received. Please try again or <a href="/login">re-login</a> if your session expired.';
+      conversationHistory.pop(); // don't save the empty message
+      return;
+    }
+
     await saveCurrentChat(conversationHistory);
 
     // Smart Title Generation after first exchange
