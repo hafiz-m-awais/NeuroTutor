@@ -1,13 +1,3 @@
----
-title: NeuroTutor
-emoji: 🧠
-colorFrom: green
-colorTo: blue
-sdk: docker
-pinned: false
-license: mit
----
-
 # 🤖 NeuroTutor
 
 ![Python Version](https://img.shields.io/badge/Python-3.9%2B-blue?style=for-the-badge&logo=python&logoColor=white)
@@ -21,7 +11,7 @@ NeuroTutor is a real-time, conversational AI tutor built specifically for Pakist
 ---
 
 ## 📹 Demo
-![NeuroTutor Demo](Demo.mp4)
+[![NeuroTutor Demo](thumbnail.png)](Demo.mp4)
 
 ---
 
