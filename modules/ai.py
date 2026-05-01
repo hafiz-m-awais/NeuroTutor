@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import threading
 import time
 from google import genai
@@ -116,6 +117,23 @@ def initialize_keys():
         log.info("OpenRouter client ready")
     else:
         log.warning("No OpenRouter key found")
+
+def _parse_json_response(raw: str):
+    """Extract and parse the first JSON object from a model response.
+    Handles preamble text, markdown code fences, and trailing text."""
+    # Strip markdown code fences first
+    raw = raw.replace('```json', '').replace('```', '').strip()
+    # Try direct parse
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+    # Fallback: extract first {...} block via regex
+    match = re.search(r'\{[\s\S]*\}', raw)
+    if match:
+        return json.loads(match.group(0))
+    raise ValueError(f"No valid JSON found in response: {raw[:200]}")
+
 
 def is_quota_error(e):
     msg = str(e).lower()
@@ -271,8 +289,7 @@ def generate_with_fallback(prompt: str, max_tokens: int = 1024, is_json: bool = 
                 )
                 raw = (response.text or '').strip()
                 if is_json:
-                    raw = raw.replace('```json', '').replace('```', '').strip()
-                    return json.loads(raw), None
+                    return _parse_json_response(raw), None
                 return raw, None
             except Exception as e:
                 if is_quota_error(e):
@@ -301,8 +318,7 @@ def generate_with_fallback(prompt: str, max_tokens: int = 1024, is_json: bool = 
                 )
                 raw = (response.choices[0].message.content or '').strip()
                 if is_json:
-                    raw = raw.replace('```json', '').replace('```', '').strip()
-                    return json.loads(raw), None
+                    return _parse_json_response(raw), None
                 return raw, None
             except Exception as e:
                 log.warning(f"Groq {model} generate failed: {e}")
@@ -326,8 +342,7 @@ def generate_with_fallback(prompt: str, max_tokens: int = 1024, is_json: bool = 
                 )
                 raw = (response.choices[0].message.content or '').strip()
                 if is_json:
-                    raw = raw.replace('```json', '').replace('```', '').strip()
-                    return json.loads(raw), None
+                    return _parse_json_response(raw), None
                 return raw, None
             except Exception as e:
                 log.warning(f"OpenRouter {model} generate failed: {e}")
@@ -346,11 +361,14 @@ def stream_debug(code: str):
 def generate_quiz(topic: str, count: int = 3):
     from modules.prompts import get_quiz_prompt
     prompt = get_quiz_prompt(topic, count)
-    return generate_with_fallback(prompt, max_tokens=count * 350)
+    max_tokens = min(count * 350, 4096)
+    return generate_with_fallback(prompt, max_tokens=max_tokens)
+
 def generate_roadmap(topic: str, days: int, level: str):
     from modules.prompts import get_roadmap_prompt
     prompt = get_roadmap_prompt(topic, days, level)
-    return generate_with_fallback(prompt, max_tokens=days * 200)
+    max_tokens = min(days * 200, 8192)
+    return generate_with_fallback(prompt, max_tokens=max_tokens)
 
 def generate_compare(concept_a: str, concept_b: str):
     from modules.prompts import CONCEPT_COMPARE_PROMPT, fill

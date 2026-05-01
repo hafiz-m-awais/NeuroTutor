@@ -1,6 +1,4 @@
-import os
 import logging
-import base64
 
 log = logging.getLogger(__name__)
 

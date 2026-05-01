@@ -1,13 +1,12 @@
-import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from cachetools import TTLCache
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context, session
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from flask_limiter.util import get_remote_address  # noqa: F401 — kept for limiter compatibility
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from config import Config
-from modules.validators import validate_request
+from modules.validators import validate_request, validate_email, validate_password
 from werkzeug.utils import secure_filename
 from modules.models import db, User, Chat, Message
 from modules.ai import build_prompt, stream_response, stream_debug, generate_quiz, generate_roadmap, generate_compare, initialize_keys
@@ -36,7 +35,7 @@ app.config.update(
 db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'login'  # pyright: ignore[reportAttributeAccessIssue]
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -48,11 +47,14 @@ initialize_keys()
 log.info(f"Total API keys loaded: {len(Config.GEMINI_API_KEYS)}")
 
 def get_real_ip():
-    """Resolve IP correctly behind Hugging Face / Nginx reverse proxy."""
+    """Resolve IP correctly behind Hugging Face / Nginx reverse proxy.
+    Only trusts X-Forwarded-For when the request comes from a known proxy.
+    Falls back to remote_addr to prevent IP spoofing by arbitrary clients.
+    """
     forwarded = request.headers.get('X-Forwarded-For')
-    if forwarded:
+    if forwarded and request.remote_addr in ('127.0.0.1', '::1', '10.0.0.0/8'):
         return forwarded.split(',')[0].strip()
-    return request.remote_addr
+    return request.remote_addr or '127.0.0.1'
 
 limiter = Limiter(
     get_real_ip,
@@ -77,16 +79,20 @@ def register():
         return render_template('register.html')
         
     data = request.json
-    email = data.get('email')
-    password = data.get('password')
-    
-    if not email or not password:
-        return jsonify({'error': 'Email and password are required'}), 400
-        
+    email = (data.get('email') or '').strip()
+    password = data.get('password') or ''
+
+    ok, err = validate_email(email)
+    if not ok:
+        return jsonify({'error': err}), 400
+    ok, err = validate_password(password)
+    if not ok:
+        return jsonify({'error': err}), 400
+
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Email already registered'}), 400
-        
-    user = User(email=email)
+
+    user = User(email=email)  # pyright: ignore[reportCallIssue]
     user.set_password(password)
     user.security_question = data.get('security_question')
     user.set_security_answer(data.get('security_answer'))
@@ -151,8 +157,9 @@ def api_reset_password():
 
 @app.route('/logout', methods=['POST', 'GET'])
 def logout():
+    from flask import redirect, url_for
     logout_user()
-    return render_template('login.html', message='Logged out successfully')
+    return redirect(url_for('login'))
 
 # --- Cloud Sync API ---
 
@@ -191,16 +198,17 @@ def save_chat():
             
         chat = Chat.query.filter_by(id=chat_id, user_id=current_user.id).first()
         if not chat:
-            chat = Chat(id=chat_id, user_id=current_user.id, title=title)
+            chat = Chat(id=chat_id, user_id=current_user.id, title=title)  # pyright: ignore[reportCallIssue]
             db.session.add(chat)
         else:
             chat.title = title
-            chat.updated_at = datetime.utcnow()
-        
-        # Clear and rebuild messages for this chat
-        Message.query.filter_by(chat_id=chat_id).delete()
-        for msg in messages:
-            m = Message(chat_id=chat_id, role=msg['role'], content=msg['content'])
+            chat.updated_at = datetime.now(timezone.utc)
+
+        # Incremental sync: only add messages beyond what's already stored
+        existing_count = Message.query.filter_by(chat_id=chat_id).count()
+        new_messages = messages[existing_count:]
+        for msg in new_messages:
+            m = Message(chat_id=chat_id, role=msg['role'], content=msg['content'])  # pyright: ignore[reportCallIssue]
             db.session.add(m)
             
         db.session.commit()
@@ -238,11 +246,12 @@ def csrf_origin_check():
             # No Origin/Referer — only allow if AJAX header present (blocks raw curl)
             xhr = request.headers.get('X-Requested-With', '')
             if xhr.lower() != 'xmlhttprequest':
-                log.warning(f"CSRF blocked — no Origin/Referer and missing XHR header")
+                log.warning("CSRF blocked — no Origin/Referer and missing XHR header")
                 return jsonify({'error': 'Forbidden'}), 403
 
 
 @app.route('/ask', methods=['POST'])
+@login_required
 @limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
 def ask():
     try:
@@ -254,7 +263,7 @@ def ask():
         question = data['question'].strip()
         history = data.get('history', [])[-Config.MAX_HISTORY:]
 
-        log.info(f"Question: {question[:60]}...")
+        log.info("Processing /ask request")
         prompt = build_prompt(question, history)
 
         return Response(
@@ -269,6 +278,7 @@ def ask():
 
 
 @app.route('/debug', methods=['POST'])
+@login_required
 @limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
 def debug():
     try:
@@ -285,7 +295,7 @@ def debug():
         if len(code) > 2000:
             return jsonify({'error': 'Code too long. Max 2000 characters.'}), 400
 
-        log.info(f"Debug: {code[:60]}...")
+        log.info("Processing /debug request")
 
         return Response(
             stream_with_context(stream_debug(code)),
@@ -299,6 +309,7 @@ def debug():
 
 
 @app.route('/quiz', methods=['POST'])
+@login_required
 @limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
 def quiz():
     try:
@@ -330,6 +341,7 @@ def quiz():
         log.error(f"Quiz error: {e}", exc_info=True)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
 @app.route('/roadmap', methods=['POST'])
+@login_required
 @limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
 def roadmap():
     try:
@@ -352,7 +364,6 @@ def roadmap():
 
         log.info(f"Roadmap: {topic} — {days} days — {level}")
 
-        from modules.ai import generate_roadmap
         roadmap_data, error = generate_roadmap(topic, days, level)
 
         if error:
@@ -365,6 +376,7 @@ def roadmap():
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
 
 @app.route('/compare', methods=['POST'])
+@login_required
 @limiter.limit(Config.RATE_LIMIT_PER_MINUTE)
 def compare():
     try:
@@ -419,6 +431,7 @@ def generate_chat_title():
 document_store = TTLCache(maxsize=500, ttl=1800)
 
 @app.route('/upload', methods=['POST'])
+@login_required
 @limiter.limit("10 per minute")
 def upload():
     try:
@@ -430,10 +443,12 @@ def upload():
             return jsonify({'error': 'No file selected'}), 400
 
         from modules.file_processor import allowed_file, extract_text, MAX_FILE_SIZE
-        filename = secure_filename(file.filename)
+        filename = secure_filename(file.filename or '')
+        if not filename:
+            return jsonify({'error': 'No file selected'}), 400
 
         if not allowed_file(filename):
-            return jsonify({'error': f'File type not supported. Allowed: pdf, txt, py, docx, xlsx, csv, ipynb and more'}), 400
+            return jsonify({'error': 'File type not supported. Allowed: pdf, txt, py, docx, xlsx, csv, ipynb and more'}), 400
 
         file.seek(0, 2)
         size = file.tell()
@@ -469,6 +484,7 @@ def upload():
         return jsonify({'error': 'Upload failed. Please try again.'}), 500
 
 @app.route('/ask-document', methods=['POST'])
+@login_required
 @limiter.limit("15 per minute")
 def ask_document():
     try:
@@ -508,6 +524,7 @@ def ask_document():
         return jsonify({'error': 'Something went wrong.'}), 500
 
 @app.route('/summarize-document', methods=['POST'])
+@login_required
 @limiter.limit("15 per minute")
 def summarize_document():
     try:
