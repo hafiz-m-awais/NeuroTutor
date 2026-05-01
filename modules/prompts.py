@@ -226,7 +226,7 @@ Provide a clear and educational summary in this format:
 
 Keep it concise, encouraging, and student-friendly. Use formatting (bolding) to highlight important terms."""
 
-def get_document_qa_prompt(docs: list, question: str, history: list = None) -> str:
+def get_document_qa_prompt(docs: list, question: str, history: list | None = None) -> str:
     prompt = "You are helping a Pakistani CS student understand the provided documents.\n\n"
     
     # Fix 8: Smarter context — for long docs, include both start AND end
