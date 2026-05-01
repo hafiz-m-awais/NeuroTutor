@@ -20,8 +20,8 @@ NeuroTutor is a real-time, conversational AI tutor built specifically for Pakist
 
 ---
 
-## 📸 UI Preview
-![NeuroTutor UI Preview](assets/ui-preview.png)
+## 📹 Demo
+![NeuroTutor Demo](Demo.mp4)
 
 ---
 
